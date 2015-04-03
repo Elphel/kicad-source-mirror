@@ -62,6 +62,7 @@
 #include <class_track.h>
 #include <class_board.h>
 #include <class_module.h>
+#include <class_teardrop.h>
 #include <worksheet_viewitem.h>
 #include <ratsnest_data.h>
 #include <ratsnest_viewitem.h>
@@ -206,6 +207,8 @@ BEGIN_EVENT_TABLE( PCB_EDIT_FRAME, PCB_BASE_FRAME )
     EVT_TOOL( ID_TOOLBARH_PCB_MODE_MODULE, PCB_EDIT_FRAME::OnSelectAutoPlaceMode )
     EVT_TOOL( ID_TOOLBARH_PCB_MODE_TRACKS, PCB_EDIT_FRAME::OnSelectAutoPlaceMode )
     EVT_TOOL( ID_TOOLBARH_PCB_FREEROUTE_ACCESS, PCB_EDIT_FRAME::Access_to_External_Tool )
+    EVT_TOOL( ID_TEARDROPS_WINDOW, PCB_EDIT_FRAME::ShowTeardropsWnd )
+
 
     // has meaning only with KICAD_SCRIPTING_WXPYTHON enabled
     EVT_TOOL( ID_TOOLBARH_PCB_SCRIPTING_CONSOLE, PCB_EDIT_FRAME::ScriptingConsoleEnableDisable )
@@ -719,7 +722,17 @@ void PCB_EDIT_FRAME::ShowDesignRulesEditor( wxCommandEvent& event )
         OnModify();
     }
 }
-
+void  PCB_EDIT_FRAME::ShowTeardropsWnd( wxCommandEvent& event )
+{
+    BOARD_ITEM *item = GetScreen()->GetCurItem();
+    if ((item != NULL) && (item->Type() == PCB_TRACE_T)) {
+        TEARDROP *td = new TEARDROP(item);
+        TRACK *track = static_cast<TRACK *>(item);
+        td->Create(*track, ENDPOINT_START, TEARDROP::TEARDROP_CURVED);
+        td->Create(*track, ENDPOINT_END, TEARDROP::TEARDROP_CURVED);
+    }
+    m_canvas->Refresh();
+}
 
 void PCB_EDIT_FRAME::LoadSettings( wxConfigBase* aCfg )
 {

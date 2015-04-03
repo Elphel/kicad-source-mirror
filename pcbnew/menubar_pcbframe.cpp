@@ -615,6 +615,10 @@ void PCB_EDIT_FRAME::ReCreateMenuBar()
                  _( "Fast access to the Web Based FreeROUTE advanced router" ),
                  KiBitmap( web_support_xpm ) );
 
+    AddMenuItem( toolsMenu, ID_TEARDROPS_WINDOW,
+                 _( "Teardrops" ),
+                 _("Add teardrops"), KiBitmap( new_pcb_xpm ) );
+
 #if defined(KICAD_SCRIPTING_WXPYTHON)
     AddMenuItem( toolsMenu, ID_TOOLBARH_PCB_SCRIPTING_CONSOLE,
                  _( "&Scripting Console" ),
