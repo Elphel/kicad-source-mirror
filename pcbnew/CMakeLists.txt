@@ -139,6 +139,8 @@ set( PCBNEW_DIALOGS
     footprint_wizard_frame.cpp
     dialogs/dialog_footprint_wizard_list_base.cpp
     dialogs/dialog_footprint_wizard_list.cpp
+    dialogs/dialog_teardrops_base.cpp
+    dialogs/dialog_teardrops.cpp
     dialogs/wizard_add_fplib_base.cpp
     dialogs/wizard_add_fplib.cpp
     )
