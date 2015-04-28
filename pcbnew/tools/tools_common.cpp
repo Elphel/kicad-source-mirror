@@ -34,6 +34,7 @@
 #include <tools/pcb_editor_control.h>
 #include <tools/placement_tool.h>
 #include <tools/common_actions.h>
+#include <tools/edit_teardrops.h>
 
 #include <router/router_tool.h>
 #include <router/length_tuner_tool.h>
@@ -49,4 +50,5 @@ void registerAllTools( TOOL_MANAGER *aToolManager )
     aToolManager->RegisterTool( new PCBNEW_CONTROL );
     aToolManager->RegisterTool( new PCB_EDITOR_CONTROL );
     aToolManager->RegisterTool( new PLACEMENT_TOOL );
+    aToolManager->RegisterTool( new TEARDROPS_EDITOR );
 }
