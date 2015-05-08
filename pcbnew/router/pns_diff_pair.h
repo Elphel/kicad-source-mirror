@@ -176,9 +176,15 @@ class PNS_DP_GATEWAYS
 
     public:
         PNS_DP_GATEWAYS ( int aGap ):
-            m_gap(aGap), m_viaGap( aGap ) {};
+            m_gap(aGap), m_viaGap( aGap )
+        {
+            // Do not leave unitialized members, and keep static analyser quiet:
+            m_viaDiameter = 0;
+            m_fitVias = true;
+        }
 
-        void SetGap ( int aGap ) {
+        void SetGap ( int aGap )
+        {
             m_gap = aGap;
             m_viaGap = aGap;
         }
@@ -263,13 +269,32 @@ public:
 
     typedef std::vector<COUPLED_SEGMENTS> COUPLED_SEGMENTS_VEC;
 
-    PNS_DIFF_PAIR ( ) : PNS_ITEM ( DIFF_PAIR ), m_hasVias (false) {}
+    PNS_DIFF_PAIR ( ) : PNS_ITEM ( DIFF_PAIR ), m_hasVias (false)
+    {
+        // Initialize some members, to avoid uninitialized variables.
+        m_net_p = 0;
+        m_net_n = 0;;
+        m_width = 0;
+        m_gap = 0;
+        m_viaGap = 0;
+        m_maxUncoupledLength = 0;
+        m_chamferLimit = 0;
+    }
 
     PNS_DIFF_PAIR ( int aGap ) :
         PNS_ITEM ( DIFF_PAIR ),
         m_hasVias (false)
     {
         m_gapConstraint = aGap;
+
+        // Initialize other members, to avoid uninitialized variables.
+        m_net_p = 0;
+        m_net_n = 0;;
+        m_width = 0;
+        m_gap = 0;
+        m_viaGap = 0;
+        m_maxUncoupledLength = 0;
+        m_chamferLimit = 0;
     }
 
     PNS_DIFF_PAIR ( const SHAPE_LINE_CHAIN &aP, const SHAPE_LINE_CHAIN& aN, int aGap = 0 ):
@@ -279,6 +304,15 @@ public:
         m_hasVias (false)
     {
         m_gapConstraint = aGap;
+
+        // Initialize other members, to avoid uninitialized variables.
+        m_net_p = 0;
+        m_net_n = 0;;
+        m_width = 0;
+        m_gap = 0;
+        m_viaGap = 0;
+        m_maxUncoupledLength = 0;
+        m_chamferLimit = 0;
     }
 
     PNS_DIFF_PAIR ( const PNS_LINE &aLineP, const PNS_LINE &aLineN, int aGap = 0 ):
@@ -292,6 +326,13 @@ public:
         m_net_n = aLineN.Net();
         m_p = aLineP.CLine();
         m_n = aLineN.CLine();
+
+        // Do not leave unitialized members, and keep static analyser quiet:
+        m_width  = 0;
+        m_gap  = 0;
+        m_viaGap  = 0;
+        m_maxUncoupledLength  = 0;
+        m_chamferLimit  = 0;
     }
 
     static inline bool ClassOf( const PNS_ITEM* aItem )

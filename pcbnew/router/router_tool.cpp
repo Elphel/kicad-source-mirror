@@ -40,6 +40,7 @@
 #include <base_units.h>
 
 #include <tool/context_menu.h>
+#include <tool/tool_manager.h>
 #include <tools/common_actions.h>
 
 #include <ratsnest_data.h>
@@ -64,23 +65,39 @@ static TOOL_ACTION ACT_AutoEndRoute( "pcbnew.InteractiveRouter.AutoEndRoute", AS
 static TOOL_ACTION ACT_Drag( "pcbnew.InteractiveRouter.Drag", AS_CONTEXT, 'G',
     _( "Drag Track/Via" ), _( "Drags a track or a via." ), drag_track_segment_xpm );
 
-static TOOL_ACTION ACT_PlaceThroughVia( "pcbnew.InteractiveRouter.PlaceVia", AS_CONTEXT, 'V',
-    _( "Place Through Via" ), _( "Adds a through-hole via at the end of currently routed track." ), via_xpm );
+static TOOL_ACTION ACT_PlaceThroughVia( "pcbnew.InteractiveRouter.PlaceVia",
+    AS_CONTEXT, 'V',
+    _( "Place Through Via" ),
+    _( "Adds a through-hole via at the end of currently routed track." ),
+    via_xpm );
 
-static TOOL_ACTION ACT_PlaceBlindVia( "pcbnew.InteractiveRouter.PlaceBlindVia", AS_CONTEXT, 'Z',
-    _( "Place Blind/Buried Via" ), _( "Adds a blind or buried via at the end of currently routed track." ) );
+static TOOL_ACTION ACT_PlaceBlindVia( "pcbnew.InteractiveRouter.PlaceBlindVia",
+    AS_CONTEXT, 'Z',
+    _( "Place Blind/Buried Via" ),
+    _( "Adds a blind or buried via at the end of currently routed track."),
+    via_buried_xpm );
 
-static TOOL_ACTION ACT_PlaceMicroVia( "pcbnew.InteractiveRouter.PlaceMicroVia", AS_CONTEXT, 'Q',
-    _( "Place Microvia" ), _( "Adds a microvia at the end of currently routed track." ) );
+static TOOL_ACTION ACT_PlaceMicroVia( "pcbnew.InteractiveRouter.PlaceMicroVia",
+    AS_CONTEXT, 'Q',
+    _( "Place Microvia" ), _( "Adds a microvia at the end of currently routed track." ),
+    via_microvia_xpm );
 
-static TOOL_ACTION ACT_CustomTrackWidth( "pcbnew.InteractiveRouter.CustomTrackWidth", AS_CONTEXT, 'W',
-    _( "Custom Track Width" ), _( "Shows a dialog for changing the track width and via size." ) );
+static TOOL_ACTION ACT_CustomTrackWidth( "pcbnew.InteractiveRouter.CustomTrackWidth",
+    AS_CONTEXT, 'W',
+    _( "Custom Track Width" ),
+    _( "Shows a dialog for changing the track width and via size." ),
+    width_track_xpm );
 
 static TOOL_ACTION ACT_SwitchPosture( "pcbnew.InteractiveRouter.SwitchPosture", AS_CONTEXT, '/',
-    _( "Switch Track Posture" ), _( "Switches posture of the currenly routed track." ), change_entry_orient_xpm );
+    _( "Switch Track Posture" ),
+    _( "Switches posture of the currenly routed track." ),
+    change_entry_orient_xpm );
 
-static TOOL_ACTION ACT_SetDpDimensions( "pcbnew.InteractiveRouter.SetDpDimensions", AS_CONTEXT, 'D',
-    _( "Differential Pair Dimensions..." ), _( "Sets the width and gap of the currently routed differential pair." ) );
+static TOOL_ACTION ACT_SetDpDimensions( "pcbnew.InteractiveRouter.SetDpDimensions",
+    AS_CONTEXT, 'D',
+    _( "Differential Pair Dimensions..." ),
+    _( "Sets the width and gap of the currently routed differential pair." ),
+    ps_diff_pair_tune_length_xpm );
 
 
 ROUTER_TOOL::ROUTER_TOOL() :
@@ -94,9 +111,9 @@ class CONTEXT_TRACK_WIDTH_MENU: public CONTEXT_MENU
 public:
     CONTEXT_TRACK_WIDTH_MENU()
     {
+        m_board = NULL;
         SetIcon( width_track_via_xpm );
-        setCustomEventHandler( boost::bind( &CONTEXT_TRACK_WIDTH_MENU::handleCustomEvent,
-                                            this, _1 ) );
+        SetMenuHandler( boost::bind( &CONTEXT_TRACK_WIDTH_MENU::EventHandler, this, _1 ) );
     }
 
     void SetBoard( BOARD* aBoard )
@@ -152,8 +169,7 @@ public:
         }
     }
 
-protected:
-    OPT_TOOL_EVENT handleCustomEvent( const wxMenuEvent& aEvent )
+    OPT_TOOL_EVENT EventHandler( const wxMenuEvent& aEvent )
     {
 #if ID_POPUP_PCB_SELECT_VIASIZE1 < ID_POPUP_PCB_SELECT_WIDTH1
 #error You have changed event ids order, it breaks code. Check the source code for more details.

@@ -33,6 +33,7 @@ class LIB_VIEW_FRAME;
 class LIB_EDIT_FRAME;
 class LIB_ALIAS;
 class PART_LIB;
+class SCHLIB_FILTER;
 
 /**
  * Class SCH_BASE_FRAME
@@ -46,6 +47,13 @@ class PART_LIB;
  */
 class SCH_BASE_FRAME : public EDA_DRAW_FRAME
 {
+protected:
+    wxPoint  m_repeatStep;          ///< the increment value of the position of an item
+                                    ///< when it is repeated
+    int      m_repeatDeltaLabel;    ///< the increment value of labels like bus members
+                                    ///< when they are repeated
+
+
 public:
     SCH_BASE_FRAME( KIWAY* aKiway, wxWindow* aParent,
                     FRAME_T aWindowType,
@@ -54,6 +62,33 @@ public:
                     long aStyle, const wxString & aFrameName );
 
     SCH_SCREEN* GetScreen() const;                              // overload EDA_DRAW_FRAME
+
+    /**
+     * @return the increment value of the position of an item
+     * for the repeat command
+     */
+    const wxPoint GetRepeatStep() const { return m_repeatStep; }
+
+    /**
+     * Sets the repeat step value for repeat command
+     * @param aStep the increment value of the position of an item
+     * for the repeat command
+     */
+    void SetRepeatStep( const wxPoint& aStep) { m_repeatStep = aStep; }
+
+    /**
+     * @return the increment value of labels like bus members
+     * for the repeat command
+     */
+    int GetRepeatDeltaLabel() const { return m_repeatDeltaLabel; }
+
+    /**
+     * Sets the repeat delta label value for repeat command
+     * @param aDelta the increment value of labels like bus members
+     * for the repeat command
+     */
+    void SetRepeatDeltaLabel( int aDelta ) { m_repeatDeltaLabel = aDelta; }
+
 
     /**
      * Function GetZoomLevelIndicator
@@ -92,8 +127,9 @@ public:
      * Calls the library viewer to select component to import into schematic.
      * if the library viewer is currently running, it is closed and reopened
      * in modal mode.
-     * @param aLibname           the lib name or an empty string.
-     *                              if aLibname is empty, the full list of libraries is used
+     * @param aFilter is a SCHLIB_FILTER filter to pass the allowed library names
+     *  and/or the library name to load the component from and/or some other filter
+     *          if NULL, no filtering.
      * @param aHistoryList       list of previously loaded components
      * @param aHistoryLastUnit   remembering last unit in last component.
      * @param aUseLibBrowser     bool to call the library viewer to select the component
@@ -102,7 +138,7 @@ public:
      *
      * @return the component name
      */
-    wxString SelectComponentFromLibrary( const wxString& aLibname,
+    wxString SelectComponentFromLibrary( const SCHLIB_FILTER* aFilter,
                                          wxArrayString&  aHistoryList,
                                          int&            aHistoryLastUnit,
                                          bool            aUseLibBrowser,
@@ -116,6 +152,8 @@ protected:
      * Calls the library viewer to select component to import into schematic.
      * if the library viewer is currently running, it is closed and reopened
      * in modal mode.
+     * @param aFilter is a filter to pass the allowed library names
+     *          and/or some other filter
      * @param aPreselectedAlias Preselected component alias. NULL if none.
      * @param aUnit            Pointer to Unit-number. Input is the pre-selected unit, output
      *                         is the finally selected unit by the user. Can be NULL.
@@ -123,7 +161,8 @@ protected:
      *                         output is the finally selected deMorgan type by the user.
      * @return the component name
      */
-    wxString SelectComponentFromLibBrowser( LIB_ALIAS* aPreselectedAlias,
+    wxString SelectComponentFromLibBrowser( const SCHLIB_FILTER* aFilter,
+                                            LIB_ALIAS* aPreselectedAlias,
                                             int* aUnit, int* aConvert );
 
     /**

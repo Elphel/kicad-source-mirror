@@ -60,6 +60,16 @@
 #define CREATE_BACKUP_FILE    true
 #define NO_BACKUP_FILE        false
 
+/**
+ * a prefix to create filenames for schematic files or other difile when auto-saved
+ * to retrieve a crash
+ * The auto-saved filenames are AUTOSAVE_PREFIX_FILENAME + <sourcefilename>
+ * where <sourcefilename> is the flename without path of the auto-saved file
+ * Warning: avoid any special char like / \ $ % which can create issues on Unix
+ * or Window with filenames or env var expansion.
+ */
+#define AUTOSAVE_PREFIX_FILENAME wxT( "_saved_" )
+
 
 class EDA_ITEM;
 class EDA_RECT;
@@ -72,6 +82,8 @@ class PAGE_INFO;
 class PLOTTER;
 class TITLE_BLOCK;
 class MSG_PANEL_ITEM;
+class TOOL_MANAGER;
+class TOOL_DISPATCHER;
 
 
 enum id_librarytype {
@@ -273,7 +285,7 @@ public:
      * the output format is: shortcut  "key"  "function"
      * lines starting with # are comments
      */
-    int WriteHotkeyConfig( struct EDA_HOTKEY_CONFIG* aDescList, wxString* aFullFileName = NULL);
+    virtual int WriteHotkeyConfig( struct EDA_HOTKEY_CONFIG* aDescList, wxString* aFullFileName = NULL );
 
     /**
      * Function ReadHotkeyConfigFile

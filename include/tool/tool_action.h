@@ -1,7 +1,7 @@
 /*
  * This program source code file is part of KiCad, a free EDA CAD application.
  *
- * Copyright (C) 2013 CERN
+ * Copyright (C) 2013-2015 CERN
  * @author Tomasz Wlostowski <tomasz.wlostowski@cern.ch>
  * @author Maciej Suminski <maciej.suminski@cern.ch>
  *
@@ -29,7 +29,7 @@
 #include <string>
 #include <cassert>
 
-#include <tool/tool_manager.h>
+#include <tool/tool_event.h>
 
 struct BITMAP_OPAQUE;
 
@@ -41,7 +41,7 @@ struct BITMAP_OPAQUE;
  * - running the DRC from the menu
  * and so on, and so forth....
  * Action class groups all necessary properties of an action, including explanation,
- * icons, hotkeys,.menu items, etc.
+ * icons, hotkeys, menu items, etc.
  */
 class TOOL_ACTION
 {
@@ -49,18 +49,9 @@ public:
     TOOL_ACTION( const std::string& aName, TOOL_ACTION_SCOPE aScope = AS_CONTEXT,
             int aDefaultHotKey = 0, const wxString aMenuItem = wxEmptyString,
             const wxString& aMenuDesc = wxEmptyString, const BITMAP_OPAQUE* aIcon = NULL,
-            TOOL_ACTION_FLAGS aFlags = AF_NONE ) :
-        m_name( aName ), m_scope( aScope ), m_defaultHotKey( aDefaultHotKey ),
-        m_currentHotKey( aDefaultHotKey ), m_menuItem( aMenuItem ),
-        m_menuDescription( aMenuDesc ), m_icon( aIcon ), m_id( -1 ), m_flags( aFlags )
-    {
-        TOOL_MANAGER::GetActionList().push_back( this );
-    }
+            TOOL_ACTION_FLAGS aFlags = AF_NONE, void* aParam = NULL );
 
-    ~TOOL_ACTION()
-    {
-        TOOL_MANAGER::GetActionList().remove( this );
-    }
+    ~TOOL_ACTION();
 
     bool operator==( const TOOL_ACTION& aRhs ) const
     {
@@ -106,30 +97,6 @@ public:
     }
 
     /**
-     * Function ChangeHotKey()
-     * Assigns a new hot key.
-     *
-     * @param aNewHotKey is the new hot key.
-     */
-    void ChangeHotKey( int aNewHotKey )
-    {
-        assert( false );
-        // hotkey has to be changed in the ACTION_MANAGER, or change the implementation
-        m_currentHotKey = aNewHotKey;
-    }
-
-    /**
-     * Function RestoreHotKey()
-     * Changes the assigned hot key to the default one.
-     */
-    void RestoreHotKey()
-    {
-        assert( false );
-        // hotkey has to be changed in the ACTION_MANAGER, or change the implementation
-        m_currentHotKey = m_defaultHotKey;
-    }
-
-    /**
      * Function HasHotKey()
      * Checks if the action has a hot key assigned.
      *
@@ -137,7 +104,7 @@ public:
      */
     bool HasHotKey() const
     {
-        return m_currentHotKey > 0;
+        return m_currentHotKey != 0;
     }
 
     /**
@@ -150,11 +117,11 @@ public:
     TOOL_EVENT MakeEvent() const
     {
         if( IsActivation() )
-            return TOOL_EVENT( TC_COMMAND, TA_ACTIVATE, m_name, m_scope );
+            return TOOL_EVENT( TC_COMMAND, TA_ACTIVATE, m_name, m_scope, m_param );
         else if( IsNotification() )
-            return TOOL_EVENT( TC_MESSAGE, TA_NONE, m_name, m_scope );
+            return TOOL_EVENT( TC_MESSAGE, TA_NONE, m_name, m_scope, m_param );
         else
-            return TOOL_EVENT( TC_COMMAND, TA_ACTION, m_name, m_scope );
+            return TOOL_EVENT( TC_COMMAND, TA_ACTION, m_name, m_scope, m_param );
     }
 
     const wxString& GetMenuItem() const
@@ -213,13 +180,39 @@ public:
         return m_icon;
     }
 
+    /**
+     * Creates a hot key code that refers to a legacy hot key setting, instead of a particular key.
+     * @param aHotKey is an ID of hot key to be referred (see @hotkeys.h).
+     */
+    inline static int LegacyHotKey( int aHotKey )
+    {
+        assert( ( aHotKey & LEGACY_HK ) == 0 );
+
+        return aHotKey | LEGACY_HK;
+    }
 private:
     friend class ACTION_MANAGER;
+
+    /// Returns the hot key assigned in the object definition. It may refer to a legacy hot key setting
+    /// (if LEGACY_HK flag is set).
+    int getDefaultHotKey()
+    {
+        return m_defaultHotKey;
+    }
+
+    /// Changes the assigned hot key.
+    void setHotKey( int aHotKey )
+    {
+        // it is not the right moment to use legacy hot key, it should be given in the object definition
+        assert( ( aHotKey & LEGACY_HK ) == 0 );
+
+        m_currentHotKey = aHotKey;
+    }
 
     /// Name of the action (convention is: app.[tool.]action.name)
     std::string m_name;
 
-    /// Scope of the action (i.e. the event that is issued after activation).
+    /// Scope of the action
     TOOL_ACTION_SCOPE m_scope;
 
     /// Default hot key that activates the action.
@@ -243,11 +236,12 @@ private:
     /// Action flags
     TOOL_ACTION_FLAGS m_flags;
 
-    /// Origin of the action
-    // const TOOL_BASE* m_origin;
+    /// Generic parameter
+    void* m_param;
 
-    /// Originating UI object
-    // wxWindow* m_uiOrigin;
+    /// Flag to determine the hot key settings is not a particular key, but a reference to legacy
+    /// hot key setting.
+    static const int LEGACY_HK = 0x800000;
 };
 
 #endif

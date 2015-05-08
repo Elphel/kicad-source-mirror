@@ -48,39 +48,35 @@ DIALOG_PNS_LENGTH_TUNING_SETTINGS::DIALOG_PNS_LENGTH_TUNING_SETTINGS( wxWindow* 
 
     switch( aMode )
     {
-        case PNS_MODE_TUNE_SINGLE:
-            SetTitle( _( "Single track length tuning" ) );
-            m_legend->SetBitmap( KiBitmap( tune_single_track_length_legend_xpm ) );
-            m_targetLength.SetValue( m_settings.m_targetLength );
-            break;
+    case PNS_MODE_TUNE_SINGLE:
+        SetTitle( _( "Single Track Length Tuning" ) );
+        m_legend->SetBitmap( KiBitmap( tune_single_track_length_legend_xpm ) );
+        m_targetLength.SetValue( m_settings.m_targetLength );
+        break;
 
-        case PNS_MODE_TUNE_DIFF_PAIR:
-            SetTitle( _( "Differential pair length tuning" ) );
-            m_legend->SetBitmap( KiBitmap( tune_diff_pair_length_legend_xpm ) );
-            m_targetLength.SetValue( m_settings.m_targetLength );
-            break;
+    case PNS_MODE_TUNE_DIFF_PAIR:
+        SetTitle( _( "Differential Pair Length Tuning" ) );
+        m_legend->SetBitmap( KiBitmap( tune_diff_pair_length_legend_xpm ) );
+        m_targetLength.SetValue( m_settings.m_targetLength );
+        break;
 
-        case PNS_MODE_TUNE_DIFF_PAIR_SKEW:
-            SetTitle( _( "Differential pair skew tuning" ) );
-            m_legend->SetBitmap( KiBitmap( tune_diff_pair_skew_legend_xpm ) );
-            m_targetLengthLabel->SetLabel( _( "Target skew: " ) );
-            m_targetLength.SetValue ( m_settings.m_targetSkew );
-            break;
+    case PNS_MODE_TUNE_DIFF_PAIR_SKEW:
+        SetTitle( _( "Differential Pair Skew Tuning" ) );
+        m_legend->SetBitmap( KiBitmap( tune_diff_pair_skew_legend_xpm ) );
+        m_targetLengthLabel->SetLabel( _( "Target skew: " ) );
+        m_targetLength.SetValue ( m_settings.m_targetSkew );
+        break;
 
-        default:
-            break;
+    default:
+        break;
     }
 
     m_stdButtonsOK->SetDefault();
     m_targetLengthText->SetSelection( -1, -1 );
     m_targetLengthText->SetFocus();
-}
 
-
-void DIALOG_PNS_LENGTH_TUNING_SETTINGS::OnClose( wxCloseEvent& aEvent )
-{
-    // Do nothing, it is result of ESC pressing
-    EndModal( 0 );
+    GetSizer()->SetSizeHints(this);
+    Centre();
 }
 
 
@@ -103,12 +99,5 @@ void DIALOG_PNS_LENGTH_TUNING_SETTINGS::OnOkClick( wxCommandEvent& aEvent )
 
     m_settings.m_cornerType = m_miterStyle->GetSelection() ? PNS_MEANDER_SETTINGS::CHAMFER : PNS_MEANDER_SETTINGS::ROUND;
 
-    EndModal( 1 );
-}
-
-
-void DIALOG_PNS_LENGTH_TUNING_SETTINGS::OnCancelClick( wxCommandEvent& aEvent )
-{
-    // Do nothing
-    EndModal( 0 );
+    EndModal( wxID_OK );
 }

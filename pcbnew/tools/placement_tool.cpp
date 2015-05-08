@@ -25,6 +25,7 @@
 #include "placement_tool.h"
 #include "common_actions.h"
 #include "selection_tool.h"
+#include <tool/tool_manager.h>
 
 #include <wxPcbStruct.h>
 #include <class_board.h>
@@ -63,10 +64,8 @@ bool PLACEMENT_TOOL::Init()
     menu->AppendSeparator();
     menu->Add( COMMON_ACTIONS::distributeHorizontally );
     menu->Add( COMMON_ACTIONS::distributeVertically );
-    m_selectionTool->AddSubMenu( menu, _( "Align/distribute" ),
-                                 SELECTION_CONDITIONS::MoreThan( 1 ) );
-
-    setTransitions();
+    m_selectionTool->GetMenu().AddMenu( menu, _( "Align/distribute" ), false,
+                                        SELECTION_CONDITIONS::MoreThan( 1 ) );
 
     return true;
 }
@@ -109,8 +108,6 @@ int PLACEMENT_TOOL::AlignTop( const TOOL_EVENT& aEvent )
         getModel<BOARD>()->GetRatsnest()->Recalculate();
     }
 
-    setTransitions();
-
     return 0;
 }
 
@@ -151,8 +148,6 @@ int PLACEMENT_TOOL::AlignBottom( const TOOL_EVENT& aEvent )
 
         getModel<BOARD>()->GetRatsnest()->Recalculate();
     }
-
-    setTransitions();
 
     return 0;
 }
@@ -195,8 +190,6 @@ int PLACEMENT_TOOL::AlignLeft( const TOOL_EVENT& aEvent )
         getModel<BOARD>()->GetRatsnest()->Recalculate();
     }
 
-    setTransitions();
-
     return 0;
 }
 
@@ -237,8 +230,6 @@ int PLACEMENT_TOOL::AlignRight( const TOOL_EVENT& aEvent )
 
         getModel<BOARD>()->GetRatsnest()->Recalculate();
     }
-
-    setTransitions();
 
     return 0;
 }
@@ -299,8 +290,6 @@ int PLACEMENT_TOOL::DistributeHorizontally( const TOOL_EVENT& aEvent )
         getModel<BOARD>()->GetRatsnest()->Recalculate();
     }
 
-    setTransitions();
-
     return 0;
 }
 
@@ -348,13 +337,11 @@ int PLACEMENT_TOOL::DistributeVertically( const TOOL_EVENT& aEvent )
         getModel<BOARD>()->GetRatsnest()->Recalculate();
     }
 
-    setTransitions();
-
     return 0;
 }
 
 
-void PLACEMENT_TOOL::setTransitions()
+void PLACEMENT_TOOL::SetTransitions()
 {
     Go( &PLACEMENT_TOOL::AlignTop,    COMMON_ACTIONS::alignTop.MakeEvent() );
     Go( &PLACEMENT_TOOL::AlignBottom, COMMON_ACTIONS::alignBottom.MakeEvent() );

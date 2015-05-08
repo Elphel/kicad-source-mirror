@@ -202,11 +202,6 @@ TOOL_MANAGER::TOOL_MANAGER() :
     m_passEvent( false )
 {
     m_actionMgr = new ACTION_MANAGER( this );
-
-    // Register known actions
-    std::list<TOOL_ACTION*>& actionList = GetActionList();
-    BOOST_FOREACH( TOOL_ACTION* action, actionList )
-        RegisterAction( action );
 }
 
 
@@ -303,7 +298,10 @@ bool TOOL_MANAGER::RunAction( const std::string& aActionName, bool aNow, void* a
     if( action )
     {
         TOOL_EVENT event = action->MakeEvent();
-        event.SetParameter( aParam );
+
+        // Allow to override the action parameter
+        if( aParam )
+            event.SetParameter( aParam );
 
         if( aNow )
             ProcessEvent( event );
@@ -313,6 +311,8 @@ bool TOOL_MANAGER::RunAction( const std::string& aActionName, bool aNow, void* a
         return true;
     }
 
+    wxASSERT_MSG( action != NULL, wxString::Format( wxT( "Could not find action %s." ), aActionName ) );
+
     return false;
 }
 
@@ -320,12 +320,21 @@ bool TOOL_MANAGER::RunAction( const std::string& aActionName, bool aNow, void* a
 void TOOL_MANAGER::RunAction( const TOOL_ACTION& aAction, bool aNow, void* aParam )
 {
     TOOL_EVENT event = aAction.MakeEvent();
-    event.SetParameter( aParam );
+
+    // Allow to override the action parameter
+    if( aParam )
+        event.SetParameter( aParam );
 
     if( aNow )
         ProcessEvent( event );
     else
         PostEvent( event );
+}
+
+
+void TOOL_MANAGER::UpdateHotKeys()
+{
+    m_actionMgr->UpdateHotKeys();
 }
 
 
@@ -383,6 +392,7 @@ bool TOOL_MANAGER::runTool( TOOL_BASE* aTool )
     }
 
     aTool->Reset( TOOL_INTERACTIVE::RUN );
+    aTool->SetTransitions();
 
     // Add the tool on the front of the processing queue (it gets events first)
     m_activeTools.push_front( aTool->GetId() );
@@ -419,7 +429,10 @@ void TOOL_MANAGER::ResetTools( TOOL_BASE::RESET_REASON aReason )
     ProcessEvent( evt );
 
     BOOST_FOREACH( TOOL_BASE* tool, m_toolState | boost::adaptors::map_keys )
+    {
         tool->Reset( aReason );
+        tool->SetTransitions();
+    }
 }
 
 
@@ -584,7 +597,12 @@ void TOOL_MANAGER::dispatchContextMenu( const TOOL_EVENT& aEvent )
 
             // Temporarily store the cursor position, so the tools could execute actions
             // using the point where the user has invoked a context menu
+            bool forcedCursor = m_viewControls->IsCursorPositionForced();
+            VECTOR2D cursorPos = m_viewControls->GetCursorPosition();
             m_viewControls->ForceCursorPosition( true, m_viewControls->GetCursorPosition() );
+
+            // Run update handlers
+            st->contextMenu->UpdateAll();
 
             boost::scoped_ptr<CONTEXT_MENU> menu( new CONTEXT_MENU( *st->contextMenu ) );
             GetEditFrame()->PopupMenu( menu.get() );
@@ -596,7 +614,10 @@ void TOOL_MANAGER::dispatchContextMenu( const TOOL_EVENT& aEvent )
                 dispatchInternal( evt );
             }
 
-            m_viewControls->ForceCursorPosition( false );
+            TOOL_EVENT evt( TC_COMMAND, TA_CONTEXT_MENU_CLOSED );
+            dispatchInternal( evt );
+
+            m_viewControls->ForceCursorPosition( forcedCursor, cursorPos );
 
             break;
         }
@@ -615,6 +636,8 @@ void TOOL_MANAGER::finishTool( TOOL_STATE* aState )
         if( tool != m_activeTools.end() )
             m_activeTools.erase( tool );
     }
+
+    aState->theTool->SetTransitions();
 }
 
 
@@ -706,6 +729,7 @@ void TOOL_MANAGER::SetEnvironment( EDA_ITEM* aModel, KIGFX::VIEW* aView,
     m_view = aView;
     m_viewControls = aViewControls;
     m_editFrame = aFrame;
+    m_actionMgr->UpdateHotKeys();
 }
 
 

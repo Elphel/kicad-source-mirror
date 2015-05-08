@@ -1,8 +1,9 @@
 /*
  * This program source code file is part of KiCad, a free EDA CAD application.
  *
- * Copyright (C) 2013 CERN
+ * Copyright (C) 2013-2015 CERN
  * @author Tomasz Wlostowski <tomasz.wlostowski@cern.ch>
+ * @author Maciej Suminski <maciej.suminski@cern.ch>
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -25,10 +26,12 @@
 #ifndef __CONTEXT_MENU_H
 #define __CONTEXT_MENU_H
 
+#include <map>
+#include <list>
+#include <boost/function.hpp>
+
 #include <wx/menu.h>
 #include <tool/tool_action.h>
-#include <map>
-#include <boost/function.hpp>
 
 class TOOL_INTERACTIVE;
 
@@ -47,9 +50,9 @@ public:
     ///> Copy constructor
     CONTEXT_MENU( const CONTEXT_MENU& aMenu );
 
-    CONTEXT_MENU& operator=( const CONTEXT_MENU& aMenu );
+    virtual ~CONTEXT_MENU();
 
-    virtual ~CONTEXT_MENU() {}
+    CONTEXT_MENU& operator=( const CONTEXT_MENU& aMenu );
 
     /**
      * Function SetTitle()
@@ -64,7 +67,7 @@ public:
      * Assigns an icon for the entry.
      * @param aIcon is the icon to be assigned. NULL is used to remove icon.
      */
-    void SetIcon( const BITMAP_OPAQUE* aIcon )
+    inline void SetIcon( const BITMAP_OPAQUE* aIcon )
     {
         m_icon = aIcon;
     }
@@ -77,7 +80,7 @@ public:
      * @param aId is the ID that is sent in the TOOL_EVENT. It should be unique for every entry.
      * @param aIcon is an optional icon.
      */
-    void Add( const wxString& aLabel, int aId, const BITMAP_OPAQUE* aIcon = NULL );
+    wxMenuItem* Add( const wxString& aLabel, int aId, const BITMAP_OPAQUE* aIcon = NULL );
 
     /**
      * Function Add()
@@ -85,7 +88,7 @@ public:
      * a TOOL_EVENT command containing name of the action is sent.
      * @param aAction is the action to be added to menu entry.
      */
-    void Add( const TOOL_ACTION& aAction );
+    wxMenuItem* Add( const TOOL_ACTION& aAction );
 
     /**
      * Function Add()
@@ -93,8 +96,10 @@ public:
      * is the capability to handle icons.
      * @param aMenu is the submenu to be added.
      * @param aLabel is the caption displayed for the menu entry.
+     * @param aExpand allows to add all entries from the menu as individual entries rather than
+     *                add everything as a submenu.
      */
-    void Add( CONTEXT_MENU* aMenu, const wxString& aLabel );
+    std::list<wxMenuItem*> Add( CONTEXT_MENU* aMenu, const wxString& aLabel, bool aExpand = false );
 
     /**
      * Function Clear()
@@ -109,28 +114,48 @@ public:
      * menu was dismissed.
      * @return The position of selected item in the context menu.
      */
-    int GetSelected() const
+    inline int GetSelected() const
     {
         return m_selected;
     }
 
-protected:
-    void setCustomEventHandler( boost::function<OPT_TOOL_EVENT(const wxMenuEvent&)> aHandler )
+    /**
+     * Function UpdateAll()
+     * Runs update handlers for the menu and its submenus.
+     */
+    void UpdateAll();
+
+    typedef boost::function<OPT_TOOL_EVENT(const wxMenuEvent&)> MENU_HANDLER;
+    typedef boost::function<void()> UPDATE_HANDLER;
+
+    /**
+     * Function SetMenuHandler()
+     * Sets the menu event handler to another function.
+     */
+    inline void SetMenuHandler( MENU_HANDLER aMenuHandler )
     {
-        m_customHandler = aHandler;
+        m_menu_handler = aMenuHandler;
     }
 
-    virtual OPT_TOOL_EVENT handleCustomEvent( const wxMenuEvent& aEvent )
+    /**
+     * Function SetUpdateHandler()
+     * Sets the update handler to a different function.
+     */
+    inline void SetUpdateHandler( UPDATE_HANDLER aUpdateHandler )
     {
-        return OPT_TOOL_EVENT();
+        m_update_handler = aUpdateHandler;
     }
 
 private:
+    // Empty stubs used by the default constructor
+    static OPT_TOOL_EVENT menuHandlerStub(const wxMenuEvent& );
+    static void updateHandlerStub();
+
     /**
-     * Function copyItem
-     * Copies all properties of a menu entry to another.
+     * Function appendCopy
+     * Appends a copy of wxMenuItem.
      */
-    void copyItem( const wxMenuItem* aSource, wxMenuItem* aDest ) const;
+    wxMenuItem* appendCopy( const wxMenuItem* aSource );
 
     ///> Common part of copy constructor and assignment operator.
     void copyFrom( const CONTEXT_MENU& aMenu );
@@ -138,7 +163,7 @@ private:
     ///> Initializes handlers for events.
     void setupEvents();
 
-    ///> Event handler.
+    ///> The default menu event handler.
     void onMenuEvent( wxMenuEvent& aEvent );
 
     /**
@@ -148,29 +173,51 @@ private:
      */
     void setTool( TOOL_INTERACTIVE* aTool );
 
+    ///> Updates hot key settings for TOOL_ACTIONs in this menu.
+    void updateHotKeys();
+
+    ///> Traverses the submenus tree looking for a submenu capable of handling a particular menu
+    ///> event. In case it is handled, it is returned the aToolEvent parameter.
+    void runEventHandlers( const wxMenuEvent& aMenuEvent, OPT_TOOL_EVENT& aToolEvent );
+
+    ///> Runs a function on the menu and all its submenus.
+    void runOnSubmenus( boost::function<void(CONTEXT_MENU*)> aFunction );
+
+    ///> Returns the corresponding wxMenuItem identifier for a TOOL_ACTION object.
+    static inline int getMenuId( const TOOL_ACTION& aAction )
+    {
+        return aAction.GetId() + ACTION_ID;
+    }
+
     ///> Flag indicating that the menu title was set up.
     bool m_titleSet;
 
     ///> Stores the id number of selected item.
     int m_selected;
 
-    ///> Instance of menu event handler.
-    //CMEventHandler m_handler;
-
     ///> Creator of the menu
     TOOL_INTERACTIVE* m_tool;
 
-    /// Menu items with ID higher than that are considered TOOL_ACTIONs
-    static const int m_actionId = 10000;
+    ///> Menu items with ID higher than that are considered TOOL_ACTIONs
+    static const int ACTION_ID = 30000;
 
-    /// Associates tool actions with menu item IDs. Non-owning.
+    ///> Associates tool actions with menu item IDs. Non-owning.
     std::map<int, const TOOL_ACTION*> m_toolActions;
 
-    /// Custom events handler, allows to translate wxEvents to TOOL_EVENTs.
-    boost::function<OPT_TOOL_EVENT(const wxMenuEvent& aEvent)> m_customHandler;
+    ///> List of submenus.
+    std::list<CONTEXT_MENU*> m_submenus;
 
-    /// Optional icon
+    ///> Parent CONTEXT_MENU.
+    CONTEXT_MENU* m_parent;
+
+    ///> Optional icon
     const BITMAP_OPAQUE* m_icon;
+
+    ///> Optional callback to translate wxMenuEvents to TOOL_EVENTs.
+    MENU_HANDLER m_menu_handler;
+
+    ///> Optional callback to update the menu state before it is displayed.
+    UPDATE_HANDLER m_update_handler;
 
     friend class TOOL_INTERACTIVE;
 };

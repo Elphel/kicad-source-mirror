@@ -61,6 +61,7 @@ class SCH_JUNCTION;
 class DIALOG_SCH_FIND;
 class wxFindDialogEvent;
 class wxFindReplaceData;
+class SCHLIB_FILTER;
 
 
 /// enum used in RotationMiroir()
@@ -356,6 +357,10 @@ public:
     void ReCreateVToolbar();
     void ReCreateOptToolbar();
     void ReCreateMenuBar();
+
+    ///> @copydoc EDA_DRAW_FRAME::GetHotKeyDescription()
+    EDA_HOTKEY* GetHotKeyDescription( int aCommand ) const;
+
     bool OnHotKey( wxDC* aDC, int aHotKey, const wxPoint& aPosition, EDA_ITEM* aItem = NULL );
 
     /**
@@ -734,6 +739,9 @@ public:
 
     // General search:
 
+    bool IsSearchCacheObsolete( const SCH_FIND_REPLACE_DATA& aSearchCriteria );
+
+
 private:
 
     /**
@@ -804,6 +812,7 @@ private:
     void OnOpenPcbModuleEditor( wxCommandEvent& event );
     void OnOpenCvpcb( wxCommandEvent& event );
     void OnOpenLibraryEditor( wxCommandEvent& event );
+    void OnRescueCached( wxCommandEvent& event );
     void OnPreferencesOptions( wxCommandEvent& event );
     void OnCancelCurrentCommand( wxCommandEvent& aEvent );
 
@@ -925,6 +934,25 @@ private:
     SCH_SHEET*  CreateSheet( wxDC* DC );
     void        ReSizeSheet( SCH_SHEET* Sheet, wxDC* DC );
 
+    /**
+     * Rotate a sheet on itself. Sheets do not have a anchor point.
+     * Because rotating it from its origin or its end is not friendly,
+     * Rotation is made around its centre
+     * @param aSheet the hierarchical sheet to rotate
+     * @param aRotCCW = true to rotate CCW, false to rotate CW
+     */
+    void        RotateHierarchicalSheet( SCH_SHEET* aSheet, bool aRotCCW );
+
+    /**
+     * Function MirrorSheet
+     * Mirror a hierarchical sheet
+     * Mirroring is made around its centre
+     * @param aSheet = the SCH_SHEET to mirror
+     * @param aFromXaxis = true to mirror relative to Horizontal axis
+     *                     false to mirror relative to vertical axis
+     */
+    void MirrorSheet( SCH_SHEET* aSheet, bool aFromXaxis );
+
     /// Loads the cache library associated to the aFileName
     bool        LoadCacheLibrary( const wxString& aFileName );
 
@@ -1004,7 +1032,9 @@ private:
      * else search in all loaded libs
      *
      * @param aDC is the device context to draw upon.
-     * @param aLibName is the library name to load the component from.
+     * @param aFilters is a filter to pass the allowed lib names list, or library name
+     * to load the component from and/or some other filters
+     *          if NULL, no filtering.
      * @param aHistoryList     list remembering recently used component names.
      * @param aHistoryLastUnit remembering last unit in last component.
      * @param aUseLibBrowser is the flag to determine if the library browser should be launched.
@@ -1013,7 +1043,7 @@ private:
      *  want to change too much while other refactoring is going on)
      */
     SCH_COMPONENT* Load_Component( wxDC*           aDC,
-                                   const wxString& aLibName,
+                                   const SCHLIB_FILTER*  aFilter,
                                    wxArrayString&  aHistoryList,
                                    int&            aHistoryLastUnit,
                                    bool            aUseLibBrowser );
@@ -1252,6 +1282,20 @@ public:
      * @return True if \a aFileName was written successfully.
      */
     bool CreateArchiveLibrary( const wxString& aFileName );
+
+    /**
+     * Function RescueCacheConflicts
+     * exports components from the '-cache' library that conflict with parts
+     * in the project libraries to a new library, renaming them to add a suffix
+     * of the root document's name to avoid conflicts.
+     *
+     * @param aRunningOnDemand - indicates whether the tool has been called up by the user
+     *      (as opposed to being run automatically). If true, an information dialog is
+     *      displayed if there are no components to rescue. If false, the tool is silent
+     *      if there are no components to rescue, and a "Never Show Again" button is
+     *      displayed.
+     */
+    bool RescueCacheConflicts( bool aRunningOnDemand );
 
     /**
      * Function PrintPage

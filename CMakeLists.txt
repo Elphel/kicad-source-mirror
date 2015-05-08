@@ -94,7 +94,7 @@ set( KICAD_REPO_NAME "product" CACHE STRING "Name of the tree from which this bu
 set( DOWNLOAD_DIR ${PROJECT_SOURCE_DIR}/.downloads-by-cmake
     CACHE PATH "Location of KiCad downloads, suggested is a dir common to all builds, i.e. global." )
 
-#Add option to add user directories for linker, if any
+# Add option to add user directories for linker, if any
 LINK_DIRECTORIES( ${LINK_DIRECTORIES_PATH} )
 
 if( UNIX )
@@ -103,6 +103,21 @@ elseif( MINGW )
     set( KICAD_USER_CONFIG_DIR $ENV{APPDATA} CACHE PATH "Location of user specific KiCad config files" )
 endif()
 mark_as_advanced( KICAD_USER_CONFIG_DIR )
+
+# Set default data file path to CMAKE_INSTALL_PREFIX if it wasn't specified during the
+# CMake configuration.  The value of DEFAULT_INSTALL_PATH is expanded in config.h and
+# used in the source code to define the base path for kicad search paths and environment
+# variables.
+if( NOT DEFAULT_INSTALL_PATH )
+    set( DEFAULT_INSTALL_PATH "${CMAKE_INSTALL_PREFIX}"
+         CACHE
+         PATH
+         "Location of KiCad data files." )
+endif()
+
+# Generate build system specific header file.
+include( PerformFeatureChecks )
+perform_feature_checks()
 
 
 #================================================
@@ -552,10 +567,6 @@ endif()
 
 # Include MinGW resource compiler.
 include( MinGWResourceCompiler )
-
-# Generate build system specific header file.
-include( PerformFeatureChecks )
-perform_feature_checks()
 
 # Find GDI+ on windows if wxGraphicsContext is available.
 if( MINGW AND USE_WX_GRAPHICS_CONTEXT )

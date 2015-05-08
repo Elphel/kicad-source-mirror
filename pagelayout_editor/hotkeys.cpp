@@ -110,17 +110,31 @@ EDA_HOTKEY* s_PlEditor_Hotkey_List[] =
     NULL
 };
 
+// Titles for hotkey editor and hotkey display
+static wxString commonSectionTitle( _HKI( "Common" ) );
+
 // list of sections and corresponding hotkey list for Pl_Editor
 // (used to create an hotkey config file)
-wxString s_PlEditorSectionTag( wxT( "[pl_editor]" ) );
-wxString s_PlEditorSectionTitle( wxT( "Part Layout Editor" ) );
+static wxString s_PlEditorSectionTag( wxT( "[pl_editor]" ) );
+static wxString s_PlEditorSectionTitle( _HKI( "Page Layout Editor" ) );
 
-struct EDA_HOTKEY_CONFIG s_PlEditor_Hokeys_Descr[] =
+struct EDA_HOTKEY_CONFIG PlEditorHokeysDescr[] =
 {
-    { &g_CommonSectionTag,    s_Common_Hotkey_List,     &g_CommonSectionTitle    },
+    { &g_CommonSectionTag,    s_Common_Hotkey_List,     &commonSectionTitle    },
     { &s_PlEditorSectionTag,  s_PlEditor_Hotkey_List,   &s_PlEditorSectionTitle  },
     { NULL,                   NULL,                     NULL                     }
 };
+
+
+EDA_HOTKEY* PL_EDITOR_FRAME::GetHotKeyDescription( int aCommand ) const
+{
+    EDA_HOTKEY* HK_Descr = GetDescriptorFromCommand( aCommand, s_Common_Hotkey_List );
+
+    if( HK_Descr == NULL )
+        HK_Descr = GetDescriptorFromCommand( aCommand, s_PlEditor_Hotkey_List );
+
+    return HK_Descr;
+}
 
 
 bool PL_EDITOR_FRAME::OnHotKey( wxDC* aDC, int aHotkeyCode,
@@ -160,7 +174,7 @@ bool PL_EDITOR_FRAME::OnHotKey( wxDC* aDC, int aHotkeyCode,
         break;
 
     case HK_HELP:       // Display Current hotkey list
-        DisplayHotkeyList( this, s_PlEditor_Hokeys_Descr );
+        DisplayHotkeyList( this, PlEditorHokeysDescr );
         break;
 
     case HK_UNDO:

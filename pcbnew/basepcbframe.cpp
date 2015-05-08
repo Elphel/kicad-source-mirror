@@ -96,8 +96,6 @@ PCB_BASE_FRAME::PCB_BASE_FRAME( KIWAY* aKiway, wxWindow* aParent, FRAME_T aFrame
     EDA_DRAW_FRAME( aKiway, aParent, aFrameType, aTitle, aPos, aSize, aStyle, aFrameName )
 {
     m_Pcb                 = NULL;
-    m_toolManager         = NULL;
-    m_toolDispatcher      = NULL;
     m_Draw3DFrame         = NULL;   // Display Window in 3D mode (OpenGL)
 
     m_UserGridSize        = wxRealPoint( 100.0, 100.0 );
@@ -119,12 +117,7 @@ PCB_BASE_FRAME::PCB_BASE_FRAME( KIWAY* aKiway, wxWindow* aParent, FRAME_T aFrame
 PCB_BASE_FRAME::~PCB_BASE_FRAME()
 {
     delete m_Collector;
-
-    delete m_toolManager;
-    delete m_toolDispatcher;
-
     delete m_Pcb;
-    delete GetGalCanvas();
 }
 
 
@@ -699,17 +692,17 @@ void PCB_BASE_FRAME::UpdateStatusBar()
     {
     case INCHES:
         absformatter = wxT( "X %.6f  Y %.6f" );
-        locformatter = wxT( "dx %.6f dy %.6f dist %.4f" );
+        locformatter = wxT( "dx %.6f  dy %.6f  dist %.4f" );
         break;
 
     case MILLIMETRES:
         absformatter = wxT( "X %.6f  Y %.6f" );
-        locformatter = wxT( "dx %.6f dy %.6f dist %.3f" );
+        locformatter = wxT( "dx %.6f  dy %.6f  dist %.3f" );
         break;
 
     case UNSCALED_UNITS:
         absformatter = wxT( "X %f  Y %f" );
-        locformatter = wxT( "dx %f dy %f dist %f" );
+        locformatter = wxT( "dx %f  dy %f  dist %f" );
         break;
 
     case DEGREES:

@@ -25,6 +25,7 @@
 #include "module_tools.h"
 #include "selection_tool.h"
 #include "common_actions.h"
+#include <tool/tool_manager.h>
 
 #include <class_draw_panel_gal.h>
 #include <view/view_controls.h>
@@ -74,9 +75,7 @@ bool MODULE_TOOLS::Init()
         return false;
     }
 
-    selectionTool->AddMenuItem( COMMON_ACTIONS::enumeratePads );
-
-    setTransitions();
+    selectionTool->GetMenu().AddItem( COMMON_ACTIONS::enumeratePads );
 
     return true;
 }
@@ -146,8 +145,6 @@ int MODULE_TOOLS::PlacePad( const TOOL_EVENT& aEvent )
             module->SetLastEditTime();
             module->Pads().PushBack( pad );
 
-            pad->SetNetCode( NETINFO_LIST::UNCONNECTED );
-
             // Set the relative pad position
             // ( pad position for module orient, 0, and relative to the module position)
             pad->SetLocalCoord();
@@ -172,7 +169,6 @@ int MODULE_TOOLS::PlacePad( const TOOL_EVENT& aEvent )
     m_controls->SetAutoPan( false );
     m_view->Remove( &preview );
 
-    setTransitions();
     m_frame->SetToolID( ID_NO_TOOL_SELECTED, wxCURSOR_DEFAULT, wxEmptyString );
 
     return 0;
@@ -202,11 +198,7 @@ int MODULE_TOOLS::EnumeratePads( const TOOL_EVENT& aEvent )
     DIALOG_ENUM_PADS settingsDlg( m_frame );
 
     if( settingsDlg.ShowModal() == wxID_CANCEL )
-    {
-        setTransitions();
-
         return 0;
-    }
 
     int padNumber = settingsDlg.GetStartNumber();
     wxString padPrefix = settingsDlg.GetPrefix();
@@ -314,8 +306,6 @@ int MODULE_TOOLS::EnumeratePads( const TOOL_EVENT& aEvent )
     m_frame->DisplayToolMsg( wxEmptyString );
     m_controls->ShowCursor( false );
 
-    setTransitions();
-
     return 0;
 }
 
@@ -386,8 +376,6 @@ int MODULE_TOOLS::CopyItems( const TOOL_EVENT& aEvent )
     m_controls->ShowCursor( false );
     m_controls->SetAutoPan( false );
 
-    setTransitions();
-
     return 0;
 }
 
@@ -408,8 +396,6 @@ int MODULE_TOOLS::PasteItems( const TOOL_EVENT& aEvent )
     catch( ... )
     {
         m_frame->DisplayToolMsg( _( "Invalid clipboard contents" ) );
-        setTransitions();
-
         return 0;
     }
 
@@ -518,8 +504,6 @@ int MODULE_TOOLS::PasteItems( const TOOL_EVENT& aEvent )
     m_controls->SetAutoPan( false );
     m_view->Remove( &preview );
 
-    setTransitions();
-
     return 0;
 }
 
@@ -555,7 +539,6 @@ int MODULE_TOOLS::ModuleTextOutlines( const TOOL_EVENT& aEvent )
     }
 
     m_frame->GetGalCanvas()->Refresh();
-    setTransitions();
 
     return 0;
 }
@@ -587,13 +570,12 @@ int MODULE_TOOLS::ModuleEdgeOutlines( const TOOL_EVENT& aEvent )
     }
 
     m_frame->GetGalCanvas()->Refresh();
-    setTransitions();
 
     return 0;
 }
 
 
-void MODULE_TOOLS::setTransitions()
+void MODULE_TOOLS::SetTransitions()
 {
     Go( &MODULE_TOOLS::PlacePad,            COMMON_ACTIONS::placePad.MakeEvent() );
     Go( &MODULE_TOOLS::EnumeratePads,       COMMON_ACTIONS::enumeratePads.MakeEvent() );

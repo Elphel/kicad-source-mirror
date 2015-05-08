@@ -227,6 +227,7 @@ BEGIN_EVENT_TABLE( SCH_EDIT_FRAME, EDA_DRAW_FRAME )
     EVT_TOOL( ID_RUN_LIBRARY, SCH_EDIT_FRAME::OnOpenLibraryEditor )
     EVT_TOOL( ID_POPUP_SCH_CALL_LIBEDIT_AND_LOAD_CMP, SCH_EDIT_FRAME::OnOpenLibraryEditor )
     EVT_TOOL( ID_TO_LIBVIEW, SCH_EDIT_FRAME::OnOpenLibraryViewer )
+    EVT_TOOL( ID_RESCUE_CACHED, SCH_EDIT_FRAME::OnRescueCached )
 
     EVT_TOOL( ID_RUN_PCB, SCH_EDIT_FRAME::OnOpenPcbnew )
     EVT_TOOL( ID_RUN_PCB_MODULE_EDITOR, SCH_EDIT_FRAME::OnOpenPcbModuleEditor )
@@ -633,8 +634,8 @@ void SCH_EDIT_FRAME::OnCloseWindow( wxCloseEvent& aEvent )
     {
         fn = Prj().AbsolutePath( screen->GetFileName() );
 
-        // Auto save file name is the normal file name prepended with $.
-        fn.SetName( wxT( "$" ) + fn.GetName() );
+        // Auto save file name is the normal file name prepended with AUTOSAVE_PREFIX_FILENAME.
+        fn.SetName( AUTOSAVE_PREFIX_FILENAME + fn.GetName() );
 
         if( fn.FileExists() && fn.IsFileWritable() )
             wxRemoveFile( fn.GetFullPath() );
@@ -719,8 +720,7 @@ void SCH_EDIT_FRAME::OnModify()
     GetScreen()->SetModify();
     GetScreen()->SetSave();
 
-    if( m_dlgFindReplace == NULL )
-        m_foundItems.SetForceSearch();
+    m_foundItems.SetForceSearch();
 }
 
 
@@ -985,9 +985,10 @@ void SCH_EDIT_FRAME::OnOpenCvpcb( wxCommandEvent& event )
         if( !player )
         {
             player = Kiway().Player( FRAME_CVPCB, true );
-            player->OpenProjectFiles( std::vector<wxString>( 1, fn.GetFullPath() ) );
             player->Show( true );
+            player->OpenProjectFiles( std::vector<wxString>( 1, fn.GetFullPath() ) );
         }
+
         player->Raise();
     }
 }
@@ -1058,6 +1059,10 @@ void SCH_EDIT_FRAME::OnOpenLibraryEditor( wxCommandEvent& event )
     }
 }
 
+void SCH_EDIT_FRAME::OnRescueCached( wxCommandEvent& event )
+{
+    RescueCacheConflicts( true );
+}
 
 void SCH_EDIT_FRAME::OnExit( wxCommandEvent& event )
 {

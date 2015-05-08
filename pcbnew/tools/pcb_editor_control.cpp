@@ -26,6 +26,7 @@
 
 #include "pcb_editor_control.h"
 #include "common_actions.h"
+#include <tool/tool_manager.h>
 
 #include "selection_tool.h"
 
@@ -74,11 +75,9 @@ bool PCB_EDITOR_CONTROL::Init()
 
     if( selTool )
     {
-        selTool->AddSubMenu( new ZONE_CONTEXT_MENU, _( "Zones" ),
-                             SELECTION_CONDITIONS::OnlyType( PCB_ZONE_AREA_T ) );
+        selTool->GetMenu().AddMenu( new ZONE_CONTEXT_MENU, _( "Zones" ), false,
+                                    SELECTION_CONDITIONS::OnlyType( PCB_ZONE_AREA_T ) );
     }
-
-    setTransitions();
 
     return true;
 }
@@ -98,8 +97,6 @@ int PCB_EDITOR_CONTROL::TrackWidthInc( const TOOL_EVENT& aEvent )
 
     wxUpdateUIEvent dummy;
     m_frame->OnUpdateSelectTrackWidth( dummy );
-    setTransitions();
-
     m_toolMgr->RunAction( COMMON_ACTIONS::trackViaSizeChanged );
 
     return 0;
@@ -119,8 +116,6 @@ int PCB_EDITOR_CONTROL::TrackWidthDec( const TOOL_EVENT& aEvent )
 
     wxUpdateUIEvent dummy;
     m_frame->OnUpdateSelectTrackWidth( dummy );
-    setTransitions();
-
     m_toolMgr->RunAction( COMMON_ACTIONS::trackViaSizeChanged );
 
     return 0;
@@ -140,8 +135,6 @@ int PCB_EDITOR_CONTROL::ViaSizeInc( const TOOL_EVENT& aEvent )
 
     wxUpdateUIEvent dummy;
     m_frame->OnUpdateSelectViaSize( dummy );
-    setTransitions();
-
     m_toolMgr->RunAction( COMMON_ACTIONS::trackViaSizeChanged );
 
     return 0;
@@ -161,8 +154,6 @@ int PCB_EDITOR_CONTROL::ViaSizeDec( const TOOL_EVENT& aEvent )
 
     wxUpdateUIEvent dummy;
     m_frame->OnUpdateSelectViaSize( dummy );
-    setTransitions();
-
     m_toolMgr->RunAction( COMMON_ACTIONS::trackViaSizeChanged );
 
     return 0;
@@ -277,7 +268,6 @@ int PCB_EDITOR_CONTROL::PlaceModule( const TOOL_EVENT& aEvent )
     controls->CaptureCursor( false );
     view->Remove( &preview );
 
-    setTransitions();
     m_frame->SetToolID( ID_NO_TOOL_SELECTED, wxCURSOR_DEFAULT, wxEmptyString );
 
     return 0;
@@ -370,7 +360,6 @@ int PCB_EDITOR_CONTROL::PlaceTarget( const TOOL_EVENT& aEvent )
     controls->CaptureCursor( false );
     view->Remove( &preview );
 
-    setTransitions();
     m_frame->SetToolID( ID_NO_TOOL_SELECTED, wxCURSOR_DEFAULT, wxEmptyString );
 
     return 0;
@@ -393,8 +382,6 @@ int PCB_EDITOR_CONTROL::ZoneFill( const TOOL_EVENT& aEvent )
         zone->ViewUpdate();
     }
 
-    setTransitions();
-
     return 0;
 }
 
@@ -410,8 +397,6 @@ int PCB_EDITOR_CONTROL::ZoneFillAll( const TOOL_EVENT& aEvent )
         zone->SetIsFilled( true );
         zone->ViewUpdate();
     }
-
-    setTransitions();
 
     return 0;
 }
@@ -432,8 +417,6 @@ int PCB_EDITOR_CONTROL::ZoneUnfill( const TOOL_EVENT& aEvent )
         zone->ViewUpdate();
     }
 
-    setTransitions();
-
     return 0;
 }
 
@@ -450,8 +433,6 @@ int PCB_EDITOR_CONTROL::ZoneUnfillAll( const TOOL_EVENT& aEvent )
         zone->ViewUpdate();
     }
 
-    setTransitions();
-
     return 0;
 }
 
@@ -464,13 +445,11 @@ int PCB_EDITOR_CONTROL::SelectionCrossProbe( const TOOL_EVENT& aEvent )
     if( selection.Size() == 1 )
         m_frame->SendMessageToEESCHEMA( selection.Item<BOARD_ITEM>( 0 ) );
 
-    setTransitions();
-
     return 0;
 }
 
 
-void PCB_EDITOR_CONTROL::setTransitions()
+void PCB_EDITOR_CONTROL::SetTransitions()
 {
     // Track & via size control
     Go( &PCB_EDITOR_CONTROL::TrackWidthInc,      COMMON_ACTIONS::trackWidthInc.MakeEvent() );

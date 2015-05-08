@@ -1,9 +1,9 @@
 /*
  * This program source code file is part of KiCad, a free EDA CAD application.
  *
- * Copyright (C) 2013 Jean-Pierre Charras, j-p.charras at wanadoo.fr
+ * Copyright (C) 2015 Jean-Pierre Charras, j-p.charras at wanadoo.fr
  * Copyright (C) 2010-2011 Wayne Stambaugh <stambaughw@verizon.net>
- * Copyright (C) 1992-2011 KiCad Developers, see AUTHORS.txt for contributors.
+ * Copyright (C) 1992-2015 KiCad Developers, see AUTHORS.txt for contributors.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -39,6 +39,7 @@
 #include <macros.h>
 #include <dialog_hotkeys_editor.h>
 #include <menus_helpers.h>
+#include <tool/tool_manager.h>
 
 #include <wx/apptrait.h>
 #include <wx/stdpaths.h>
@@ -47,16 +48,6 @@
 #define HOTKEYS_CONFIG_KEY wxT( "Keys" )
 
 wxString g_CommonSectionTag( wxT( "[common]" ) );
-wxString g_SchematicSectionTag( wxT( "[eeschema]" ) );
-wxString g_LibEditSectionTag( wxT( "[libedit]" ) );
-wxString g_BoardEditorSectionTag( wxT( "[pcbnew]" ) );
-wxString g_ModuleEditSectionTag( wxT( "[footprinteditor]" ) );
-
-wxString g_CommonSectionTitle( wxT( "Common" ) );
-wxString g_SchematicSectionTitle( wxT( "Schematic Editor" ) );
-wxString g_LibEditSectionTitle( wxT( "Library Editor" ) );
-wxString g_BoardEditorSectionTitle( wxT( "Board Editor" ) );
-wxString g_ModuleEditSectionTitle( wxT( "Footprint Editor" ) );
 
 
 /* Class to handle hotkey commnands. hotkeys have a default value
@@ -485,6 +476,20 @@ EDA_HOTKEY* GetDescriptorFromHotkey( int aKey, EDA_HOTKEY** aList )
         EDA_HOTKEY* hk_decr = *aList;
 
         if( hk_decr->m_KeyCode == aKey )
+            return hk_decr;
+    }
+
+    return NULL;
+}
+
+
+EDA_HOTKEY* GetDescriptorFromCommand( int aCommand, EDA_HOTKEY** aList )
+{
+    for( ; *aList != NULL; aList++ )
+    {
+        EDA_HOTKEY* hk_decr = *aList;
+
+        if( hk_decr->m_Idcommand == aCommand )
             return hk_decr;
     }
 

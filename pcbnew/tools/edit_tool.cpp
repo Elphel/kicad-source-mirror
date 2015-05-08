@@ -79,24 +79,22 @@ bool EDIT_TOOL::Init()
     }
 
     // Add context menu entries that are displayed when selection tool is active
-    m_selectionTool->AddMenuItem( COMMON_ACTIONS::editActivate, SELECTION_CONDITIONS::NotEmpty );
-    m_selectionTool->AddMenuItem( COMMON_ACTIONS::rotate, SELECTION_CONDITIONS::NotEmpty );
-    m_selectionTool->AddMenuItem( COMMON_ACTIONS::flip, SELECTION_CONDITIONS::NotEmpty );
-    m_selectionTool->AddMenuItem( COMMON_ACTIONS::remove, SELECTION_CONDITIONS::NotEmpty );
-    m_selectionTool->AddMenuItem( COMMON_ACTIONS::properties, SELECTION_CONDITIONS::NotEmpty );
-    m_selectionTool->AddMenuItem( COMMON_ACTIONS::moveExact, SELECTION_CONDITIONS::NotEmpty );
-    m_selectionTool->AddMenuItem( COMMON_ACTIONS::duplicate, SELECTION_CONDITIONS::NotEmpty );
-    m_selectionTool->AddMenuItem( COMMON_ACTIONS::createArray, SELECTION_CONDITIONS::NotEmpty );
+    m_selectionTool->GetMenu().AddItem( COMMON_ACTIONS::editActivate, SELECTION_CONDITIONS::NotEmpty );
+    m_selectionTool->GetMenu().AddItem( COMMON_ACTIONS::rotate, SELECTION_CONDITIONS::NotEmpty );
+    m_selectionTool->GetMenu().AddItem( COMMON_ACTIONS::flip, SELECTION_CONDITIONS::NotEmpty );
+    m_selectionTool->GetMenu().AddItem( COMMON_ACTIONS::remove, SELECTION_CONDITIONS::NotEmpty );
+    m_selectionTool->GetMenu().AddItem( COMMON_ACTIONS::properties, SELECTION_CONDITIONS::NotEmpty );
+    m_selectionTool->GetMenu().AddItem( COMMON_ACTIONS::moveExact, SELECTION_CONDITIONS::NotEmpty );
+    m_selectionTool->GetMenu().AddItem( COMMON_ACTIONS::duplicate, SELECTION_CONDITIONS::NotEmpty );
+    m_selectionTool->GetMenu().AddItem( COMMON_ACTIONS::createArray, SELECTION_CONDITIONS::NotEmpty );
 
     // Footprint actions
-    m_selectionTool->AddMenuItem( COMMON_ACTIONS::editFootprintInFpEditor,
-                                SELECTION_CONDITIONS::OnlyType ( PCB_MODULE_T ) &&
-                                SELECTION_CONDITIONS::Count ( 1 ) );
+    m_selectionTool->GetMenu().AddItem( COMMON_ACTIONS::editFootprintInFpEditor,
+                                        SELECTION_CONDITIONS::OnlyType( PCB_MODULE_T ) &&
+                                        SELECTION_CONDITIONS::Count( 1 ) );
 
     m_offset.x = 0;
     m_offset.y = 0;
-
-    setTransitions();
 
     return true;
 }
@@ -128,10 +126,7 @@ int EDIT_TOOL::Main( const TOOL_EVENT& aEvent )
     // Be sure that there is at least one item that we can modify. If nothing was selected before,
     // try looking for the stuff under mouse cursor (i.e. Kicad old-style hover selection)
     if( !hoverSelection( selection ) )
-    {
-        setTransitions();
         return 0;
-    }
 
     Activate();
 
@@ -345,8 +340,6 @@ int EDIT_TOOL::Main( const TOOL_EVENT& aEvent )
     controls->SetAutoPan( false );
     controls->ForceCursorPosition( false );
 
-    setTransitions();
-
     return 0;
 }
 
@@ -357,11 +350,7 @@ int EDIT_TOOL::Properties( const TOOL_EVENT& aEvent )
     PCB_BASE_EDIT_FRAME* editFrame = getEditFrame<PCB_BASE_EDIT_FRAME>();
 
     if( !hoverSelection( selection, false ) )
-    {
-        setTransitions();
-
         return 0;
-    }
 
     // Properties are displayed when there is only one item selected
     if( selection.Size() == 1 )
@@ -398,8 +387,6 @@ int EDIT_TOOL::Properties( const TOOL_EVENT& aEvent )
         item->SetFlags( flags );
     }
 
-    setTransitions();
-
     return 0;
 }
 
@@ -413,11 +400,7 @@ int EDIT_TOOL::Rotate( const TOOL_EVENT& aEvent )
     bool unselect = selection.Empty();
 
     if( !hoverSelection( selection ) )
-    {
-        setTransitions();
-
         return 0;
-    }
 
     wxPoint rotatePoint = getModificationPoint( selection );
 
@@ -453,7 +436,6 @@ int EDIT_TOOL::Rotate( const TOOL_EVENT& aEvent )
         m_toolMgr->RunAction( COMMON_ACTIONS::selectionClear, true );
 
     m_toolMgr->RunAction( COMMON_ACTIONS::pointEditorUpdate, true );
-    setTransitions();
 
     return 0;
 }
@@ -468,11 +450,7 @@ int EDIT_TOOL::Flip( const TOOL_EVENT& aEvent )
     bool unselect = selection.Empty();
 
     if( !hoverSelection( selection ) )
-    {
-        setTransitions();
-
         return 0;
-    }
 
     wxPoint flipPoint = getModificationPoint( selection );
 
@@ -507,7 +485,6 @@ int EDIT_TOOL::Flip( const TOOL_EVENT& aEvent )
         m_toolMgr->RunAction( COMMON_ACTIONS::selectionClear, true );
 
     m_toolMgr->RunAction( COMMON_ACTIONS::pointEditorUpdate, true );
-    setTransitions();
 
     return 0;
 }
@@ -518,11 +495,7 @@ int EDIT_TOOL::Remove( const TOOL_EVENT& aEvent )
     const SELECTION& selection = m_selectionTool->GetSelection();
 
     if( !hoverSelection( selection ) )
-    {
-        setTransitions();
-
         return 0;
-    }
 
     // Get a copy of the selected items set
     PICKED_ITEMS_LIST selectedItems = selection.items;
@@ -543,8 +516,6 @@ int EDIT_TOOL::Remove( const TOOL_EVENT& aEvent )
         remove( static_cast<BOARD_ITEM*>( selectedItems.GetPickedItem( i ) ) );
 
     getModel<BOARD>()->GetRatsnest()->Recalculate();
-
-    setTransitions();
 
     return 0;
 }
@@ -611,12 +582,6 @@ void EDIT_TOOL::remove( BOARD_ITEM* aItem )
 
         if( !m_editModules )
         {
-            if( aItem->Type() == PCB_PAD_T && module->GetPadCount() == 1 )
-            {
-                DisplayError( getEditFrame<PCB_BASE_FRAME>(), _( "Cannot delete the only remaining pad of the module (modules on PCB must have at least one pad)." ) );
-                return;
-            }
-
             getView()->Remove( aItem );
             board->Remove( aItem );
         }
@@ -655,11 +620,7 @@ int EDIT_TOOL::MoveExact( const TOOL_EVENT& aEvent )
     bool unselect = selection.Empty();
 
     if( !hoverSelection( selection ) )
-    {
-        setTransitions();
-
         return 0;
-    }
 
     wxPoint translation;
     double rotation = 0;
@@ -705,8 +666,6 @@ int EDIT_TOOL::MoveExact( const TOOL_EVENT& aEvent )
         m_toolMgr->RunAction( COMMON_ACTIONS::pointEditorUpdate, true );
     }
 
-    setTransitions();
-
     return 0;
 }
 
@@ -721,10 +680,7 @@ int EDIT_TOOL::Duplicate( const TOOL_EVENT& aEvent )
 
     // Be sure that there is at least one item that we can modify
     if( !hoverSelection( selection ) )
-    {
-        setTransitions();
         return 0;
-    }
 
     // we have a selection to work on now, so start the tool process
 
@@ -803,8 +759,6 @@ int EDIT_TOOL::Duplicate( const TOOL_EVENT& aEvent )
     // and re-enable undos
     decUndoInhibit();
 
-    setTransitions();
-
     return 0;
 }
 
@@ -817,10 +771,7 @@ int EDIT_TOOL::CreateArray( const TOOL_EVENT& aEvent )
 
     // Be sure that there is at least one item that we can modify
     if( !hoverSelection( selection ) )
-    {
-        setTransitions();
         return 0;
-    }
 
     bool originalItemsModified = false;
 
@@ -848,7 +799,7 @@ int EDIT_TOOL::CreateArray( const TOOL_EVENT& aEvent )
     DIALOG_CREATE_ARRAY dialog( editFrame, rotPoint, &array_opts );
     int ret = dialog.ShowModal();
 
-    if( ret == DIALOG_CREATE_ARRAY::CREATE_ARRAY_OK && array_opts != NULL )
+    if( ret == wxID_OK && array_opts != NULL )
     {
         PICKED_ITEMS_LIST newItemList;
 
@@ -950,7 +901,8 @@ int EDIT_TOOL::CreateArray( const TOOL_EVENT& aEvent )
                     case PCB_TEXT_T:
                     {
                         EDA_TEXT* text = dynamic_cast<EDA_TEXT*>( newItem );
-                        text->SetText( array_opts->InterpolateNumberIntoString( ptN, cachedString ) );
+                        if( text )
+                            text->SetText( array_opts->InterpolateNumberIntoString( ptN, cachedString ) );
 
                         originalItemsModified = true;
                         break;
@@ -979,13 +931,12 @@ int EDIT_TOOL::CreateArray( const TOOL_EVENT& aEvent )
     }
 
     getModel<BOARD>()->GetRatsnest()->Recalculate();
-    setTransitions();
 
     return 0;
 }
 
 
-void EDIT_TOOL::setTransitions()
+void EDIT_TOOL::SetTransitions()
 {
     Go( &EDIT_TOOL::Main,       COMMON_ACTIONS::editActivate.MakeEvent() );
     Go( &EDIT_TOOL::Rotate,     COMMON_ACTIONS::rotate.MakeEvent() );
@@ -1124,6 +1075,5 @@ int EDIT_TOOL::editFootprintInFpEditor( const TOOL_EVENT& aEvent )
     editor->Show( true );
     editor->Raise();        // Iconize( false );
 
-    setTransitions();
     return 0;
 }

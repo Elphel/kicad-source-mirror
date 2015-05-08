@@ -85,7 +85,7 @@ public:
         HIDDEN      = 0x02      /// Item is temporarily hidden (e.g. being used by a tool). Overrides VISIBLE flag.
     };
 
-    VIEW_ITEM() : m_view( NULL ), m_flags( VISIBLE ), m_requiredUpdate( ALL ),
+    VIEW_ITEM() : m_view( NULL ), m_flags( VISIBLE ), m_requiredUpdate( NONE ),
                   m_groups( NULL ), m_groupsSize( 0 ) {}
 
     /**
@@ -203,10 +203,15 @@ public:
      */
     virtual void ViewUpdate( int aUpdateFlags = ALL )
     {
-        if( m_view && m_requiredUpdate == NONE )
-            m_view->MarkForUpdate( this );
+        if( m_view )
+        {
+            assert( aUpdateFlags != NONE );
 
-        m_requiredUpdate |= aUpdateFlags;
+            if( m_requiredUpdate == NONE )
+                m_view->MarkForUpdate( this );
+
+            m_requiredUpdate |= aUpdateFlags;
+        }
     }
 
     /**

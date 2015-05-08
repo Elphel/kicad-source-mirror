@@ -51,6 +51,8 @@
 #include <view/view.h>
 #include <view/view_controls.h>
 #include <gal/graphics_abstraction_layer.h>
+#include <tool/tool_manager.h>
+#include <tool/tool_dispatcher.h>
 
 /**
  * Definition for enabling and disabling scroll bar setting trace output.  See the
@@ -110,6 +112,8 @@ EDA_DRAW_FRAME::EDA_DRAW_FRAME( KIWAY* aKiway, wxWindow* aParent,
     m_canvas              = NULL;
     m_galCanvas           = NULL;
     m_galCanvasActive     = false;
+    m_toolManager         = NULL;
+    m_toolDispatcher      = NULL;
     m_messagePanel        = NULL;
     m_currentScreen       = NULL;
     m_toolId              = ID_NO_TOOL_SELECTED;
@@ -180,6 +184,10 @@ EDA_DRAW_FRAME::EDA_DRAW_FRAME( KIWAY* aKiway, wxWindow* aParent,
 
 EDA_DRAW_FRAME::~EDA_DRAW_FRAME()
 {
+    delete m_toolManager;
+    delete m_toolDispatcher;
+    delete m_galCanvas;
+
     delete m_currentScreen;
     m_currentScreen = NULL;
 
@@ -342,6 +350,15 @@ bool EDA_DRAW_FRAME::OnHotKey( wxDC* aDC, int aHotKey, const wxPoint& aPosition,
     return false;
 }
 
+int EDA_DRAW_FRAME::WriteHotkeyConfig( struct EDA_HOTKEY_CONFIG* aDescList, wxString* aFullFileName )
+{
+    int result = EDA_BASE_FRAME::WriteHotkeyConfig( aDescList, aFullFileName );
+
+    if( IsGalCanvasActive() )
+        GetToolManager()->UpdateHotKeys();
+
+    return result;
+}
 
 void EDA_DRAW_FRAME::ToolOnRightClick( wxCommandEvent& event )
 {
@@ -361,7 +378,7 @@ void EDA_DRAW_FRAME::OnSelectGrid( wxCommandEvent& event )
 
     if( event.GetEventType() == wxEVT_COMMAND_COMBOBOX_SELECTED )
     {
-        if( m_gridSelectBox == NULL )
+        if( m_gridSelectBox == NULL )   // Should no happen
             return;
 
         /*
@@ -379,47 +396,17 @@ void EDA_DRAW_FRAME::OnSelectGrid( wxCommandEvent& event )
     else
     {
         eventId = event.GetId();
-
-        /* Update the grid select combobox if the grid size was changed
-         * by menu event.
-         */
-        if( m_gridSelectBox != NULL )
-        {
-            for( size_t i = 0; i < m_gridSelectBox->GetCount(); i++ )
-            {
-                clientData = (int*) m_gridSelectBox->wxItemContainer::GetClientData( i );
-
-                if( clientData && eventId == *clientData )
-                {
-                    m_gridSelectBox->SetSelection( i );
-                    break;
-                }
-            }
-        }
     }
 
-    // Be sure m_LastGridSizeId is up to date.
-    m_LastGridSizeId = eventId - ID_POPUP_GRID_LEVEL_1000;
+    int idx = eventId - ID_POPUP_GRID_LEVEL_1000;
 
-    BASE_SCREEN* screen = GetScreen();
+    // Notify GAL
+    TOOL_MANAGER* mgr = GetToolManager();
 
-    if( screen->GetGridId() == eventId )
-        return;
-
-    /*
-     * This allows for saving non-sequential command ID offsets used that
-     * may be used in the grid size combobox.  Do not use the selection
-     * index returned by GetSelection().
-     */
-    screen->SetGrid( eventId );
-    SetCrossHairPosition( RefPos( true ) );
-
-    if( IsGalCanvasActive() )
-    {
-        GetGalCanvas()->GetGAL()->SetGridSize( VECTOR2D( screen->GetGrid().m_Size.x,
-                                                         screen->GetGrid().m_Size.y ) );
-        GetGalCanvas()->GetView()->MarkTargetDirty( KIGFX::TARGET_NONCACHED );
-    }
+    if( mgr && IsGalCanvasActive() )
+        mgr->RunAction( "common.Control.gridPreset", true, idx );
+    else
+        SetPresetGrid( idx );
 
     m_canvas->Refresh();
 }
@@ -448,22 +435,14 @@ void EDA_DRAW_FRAME::OnSelectZoom( wxCommandEvent& event )
             return;
 
         GetScreen()->SetZoom( selectedZoom );
-
-        if( IsGalCanvasActive() )
-        {
-            // Apply computed view settings to GAL
-            KIGFX::VIEW* view = GetGalCanvas()->GetView();
-            KIGFX::GAL* gal = GetGalCanvas()->GetGAL();
-
-            double zoomFactor = gal->GetWorldScale() / gal->GetZoomFactor();
-            double zoom = 1.0 / ( zoomFactor * GetZoom() );
-
-            view->SetScale( zoom );
-            GetGalCanvas()->Refresh();
-        }
-        else
-            RedrawScreen( GetScrollCenterPosition(), false );
+        RedrawScreen( GetScrollCenterPosition(), false );
     }
+
+    // Notify GAL
+    TOOL_MANAGER* mgr = GetToolManager();
+
+    if( mgr && IsGalCanvasActive() )
+        mgr->RunAction( "common.Control.zoomPreset", true, id );
 }
 
 
@@ -556,33 +535,49 @@ wxPoint EDA_DRAW_FRAME::GetGridPosition( const wxPoint& aPosition ) const
 
 void EDA_DRAW_FRAME::SetNextGrid()
 {
-    if( m_gridSelectBox )
-    {
-        m_gridSelectBox->SetSelection( ( m_gridSelectBox->GetSelection() + 1 ) %
-                                       m_gridSelectBox->GetCount() );
+    BASE_SCREEN * screen = GetScreen();
+    int grid_cnt = screen->GetGridCount();
 
-        wxCommandEvent cmd( wxEVT_COMMAND_COMBOBOX_SELECTED );
-        //        cmd.SetEventObject( this );
-        OnSelectGrid( cmd );
-    }
+    int new_grid_idx = screen->GetGridId() - ID_POPUP_GRID_LEVEL_1000 + 1;
+
+    if( new_grid_idx >= grid_cnt )
+        new_grid_idx = 0;
+
+   SetPresetGrid( new_grid_idx );
 }
 
 
 void EDA_DRAW_FRAME::SetPrevGrid()
 {
+    BASE_SCREEN * screen = GetScreen();
+    int grid_cnt = screen->GetGridCount();
+
+    int new_grid_idx = screen->GetGridId() - ID_POPUP_GRID_LEVEL_1000 - 1;
+
+    if( new_grid_idx < 0 )
+        new_grid_idx = grid_cnt - 1;
+
+    SetPresetGrid( new_grid_idx );
+}
+
+
+void EDA_DRAW_FRAME::SetPresetGrid( int aIndex )
+{
     if( m_gridSelectBox )
     {
-        int cnt = m_gridSelectBox->GetSelection();
+        if( aIndex < 0 || aIndex >= (int) m_gridSelectBox->GetCount() )
+        {
+            wxASSERT_MSG( false, "Invalid grid index" );
+            return;
+        }
 
-        if( --cnt < 0 )
-            cnt = m_gridSelectBox->GetCount() - 1;
-
-        m_gridSelectBox->SetSelection( cnt );
-
-        wxCommandEvent cmd( wxEVT_COMMAND_COMBOBOX_SELECTED );
-        //        cmd.SetEventObject( this );
-        OnSelectGrid( cmd );
+        m_gridSelectBox->SetSelection( aIndex );
     }
+
+    // Be sure m_LastGridSizeId is up to date.
+    m_LastGridSizeId = aIndex;
+    GetScreen()->SetGrid( aIndex + ID_POPUP_GRID_LEVEL_1000 );
+    SetCrossHairPosition( RefPos( true ) );
 }
 
 
@@ -730,17 +725,17 @@ wxString EDA_DRAW_FRAME::LengthDoubleToString( double aValue, bool aConvertToMil
 
 bool EDA_DRAW_FRAME::HandleBlockBegin( wxDC* aDC, int aKey, const wxPoint& aPosition )
 {
-    BLOCK_SELECTOR* Block = &GetScreen()->m_BlockLocate;
+    BLOCK_SELECTOR* block = &GetScreen()->m_BlockLocate;
 
-    if( ( Block->GetCommand() != BLOCK_IDLE ) || ( Block->GetState() != STATE_NO_BLOCK ) )
+    if( ( block->GetCommand() != BLOCK_IDLE ) || ( block->GetState() != STATE_NO_BLOCK ) )
         return false;
 
-    Block->SetCommand( (BLOCK_COMMAND_T) BlockCommand( aKey ) );
+    block->SetCommand( (BLOCK_COMMAND_T) BlockCommand( aKey ) );
 
-    if( Block->GetCommand() == 0 )
+    if( block->GetCommand() == 0 )
         return false;
 
-    switch( Block->GetCommand() )
+    switch( block->GetCommand() )
     {
     case BLOCK_IDLE:
         break;
@@ -758,17 +753,17 @@ bool EDA_DRAW_FRAME::HandleBlockBegin( wxDC* aDC, int aKey, const wxPoint& aPosi
     case BLOCK_MIRROR_X:
     case BLOCK_MIRROR_Y:            // mirror
     case BLOCK_PRESELECT_MOVE:      // Move with preselection list
-        Block->InitData( m_canvas, aPosition );
+        block->InitData( m_canvas, aPosition );
         break;
 
     case BLOCK_PASTE:
-        Block->InitData( m_canvas, aPosition );
-        Block->SetLastCursorPosition( wxPoint( 0, 0 ) );
+        block->InitData( m_canvas, aPosition );
+        block->SetLastCursorPosition( wxPoint( 0, 0 ) );
         InitBlockPasteInfos();
 
-        if( Block->GetCount() == 0 )      // No data to paste
+        if( block->GetCount() == 0 )      // No data to paste
         {
-            DisplayError( this, wxT( "No Block to paste" ), 20 );
+            DisplayError( this, wxT( "No block to paste" ), 20 );
             GetScreen()->m_BlockLocate.SetCommand( BLOCK_IDLE );
             m_canvas->SetMouseCaptureCallback( NULL );
             return true;
@@ -776,13 +771,13 @@ bool EDA_DRAW_FRAME::HandleBlockBegin( wxDC* aDC, int aKey, const wxPoint& aPosi
 
         if( !m_canvas->IsMouseCaptured() )
         {
-            Block->ClearItemsList();
+            block->ClearItemsList();
             DisplayError( this,
                           wxT( "EDA_DRAW_FRAME::HandleBlockBegin() Err: m_mouseCaptureCallback NULL" ) );
             return true;
         }
 
-        Block->SetState( STATE_BLOCK_MOVE );
+        block->SetState( STATE_BLOCK_MOVE );
         m_canvas->CallMouseCapture( aDC, aPosition, false );
         break;
 
@@ -790,13 +785,13 @@ bool EDA_DRAW_FRAME::HandleBlockBegin( wxDC* aDC, int aKey, const wxPoint& aPosi
         {
             wxString msg;
             msg << wxT( "EDA_DRAW_FRAME::HandleBlockBegin() error: Unknown command " ) <<
-            Block->GetCommand();
+            block->GetCommand();
             DisplayError( this, msg );
         }
         break;
     }
 
-    Block->SetMessageBlock( this );
+    block->SetMessageBlock( this );
     return true;
 }
 
@@ -1018,38 +1013,29 @@ void EDA_DRAW_FRAME::UseGalCanvas( bool aEnable )
     KIGFX::GAL* gal = GetGalCanvas()->GetGAL();
 
     double zoomFactor = gal->GetWorldScale() / gal->GetZoomFactor();
+    BASE_SCREEN* screen = GetScreen();
 
     // Display the same view after canvas switching
-    if( aEnable )
+    if( aEnable )       // Switch to GAL rendering
     {
-        BASE_SCREEN* screen = GetScreen();
-
-        // Switch to GAL rendering
-        if( !IsGalCanvasActive() )
-        {
-            // Set up viewport
-            double zoom = 1.0 / ( zoomFactor * m_canvas->GetZoom() );
-            view->SetScale( zoom );
-            view->SetCenter( VECTOR2D( m_canvas->GetScreenCenterLogicalPosition() ) );
-        }
+        // Set up viewport
+        double zoom = 1.0 / ( zoomFactor * m_canvas->GetZoom() );
+        view->SetScale( zoom );
+        view->SetCenter( VECTOR2D( m_canvas->GetScreenCenterLogicalPosition() ) );
 
         // Set up grid settings
         gal->SetGridVisibility( IsGridVisible() );
-        gal->SetGridSize( VECTOR2D( screen->GetGridSize().x, screen->GetGridSize().y ) );
+        gal->SetGridSize( VECTOR2D( screen->GetGridSize() ) );
         gal->SetGridOrigin( VECTOR2D( GetGridOrigin() ) );
     }
-    else
+    else                // Switch to standard rendering
     {
-        // Switch to standard rendering
-        if( IsGalCanvasActive() )
-        {
-            // Change view settings only if GAL was active previously
-            double zoom = 1.0 / ( zoomFactor * view->GetScale() );
-            m_canvas->SetZoom( zoom );
+        // Change view settings only if GAL was active previously
+        double zoom = 1.0 / ( zoomFactor * view->GetScale() );
+        m_canvas->SetZoom( zoom );
 
-            VECTOR2D center = view->GetCenter();
-            RedrawScreen( wxPoint( center.x, center.y ), false );
-        }
+        VECTOR2D center = view->GetCenter();
+        AdjustScrollBars( wxPoint( center.x, center.y ) );
     }
 
     m_canvas->SetEvtHandlerEnabled( !aEnable );
@@ -1185,13 +1171,23 @@ void EDA_DRAW_FRAME::GeneralControlKeyMovement( int aHotKey, wxPoint *aPos,
 
     switch( aHotKey )
     {
-        // All these keys have almost the same treatment
-    case GR_KB_CTRL | WXK_NUMPAD8: case GR_KB_CTRL | WXK_UP:
-    case GR_KB_CTRL | WXK_NUMPAD2: case GR_KB_CTRL | WXK_DOWN:
-    case GR_KB_CTRL | WXK_NUMPAD4: case GR_KB_CTRL | WXK_LEFT:
-    case GR_KB_CTRL | WXK_NUMPAD6: case GR_KB_CTRL | WXK_RIGHT:
-    case WXK_NUMPAD8: case WXK_UP: case WXK_NUMPAD2: case WXK_DOWN:
-    case WXK_NUMPAD4: case WXK_LEFT: case WXK_NUMPAD6: case WXK_RIGHT:
+    // All these keys have almost the same treatment
+    case GR_KB_CTRL | WXK_NUMPAD8:
+    case GR_KB_CTRL | WXK_UP:
+    case GR_KB_CTRL | WXK_NUMPAD2:
+    case GR_KB_CTRL | WXK_DOWN:
+    case GR_KB_CTRL | WXK_NUMPAD4:
+    case GR_KB_CTRL | WXK_LEFT:
+    case GR_KB_CTRL | WXK_NUMPAD6:
+    case GR_KB_CTRL | WXK_RIGHT:
+    case WXK_NUMPAD8:
+    case WXK_UP:
+    case WXK_NUMPAD2:
+    case WXK_DOWN:
+    case WXK_NUMPAD4:
+    case WXK_LEFT:
+    case WXK_NUMPAD6:
+    case WXK_RIGHT:
         {
             /* Here's a tricky part: when doing cursor key movement, the
              * 'previous' point should be taken from memory, *not* from the

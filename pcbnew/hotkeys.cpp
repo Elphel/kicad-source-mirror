@@ -141,7 +141,7 @@ static EDA_HOTKEY HkCanvasCairo( _HKI( "Switch to Cairo Canvas" ),
 static EDA_HOTKEY HkZoneFillOrRefill( _HKI( "Fill or Refill All Zones" ),
                                  HK_ZONE_FILL_OR_REFILL, 'B' );
 static EDA_HOTKEY HkZoneRemoveFilled( _HKI( "Remove Filled Areas in All Zones" ),
-                                 HK_ZONE_REMOVE_FILLED, 'N' );
+                                 HK_ZONE_REMOVE_FILLED, 'B' + GR_KB_CTRL );
 /* Fit on Screen */
 #if !defined( __WXMAC__ )
 static EDA_HOTKEY HkZoomAuto( _HKI( "Zoom Auto" ), HK_ZOOM_AUTO, WXK_HOME );
@@ -203,10 +203,10 @@ static EDA_HOTKEY HkSwitchGridToFastGrid2( _HKI( "Switch Grid To Fast Grid2" ),
                                            HK_SWITCH_GRID_TO_FASTGRID2, GR_KB_ALT + '2' );
 
 static EDA_HOTKEY HkSwitchGridToNext( _HKI( "Switch Grid To Next" ),
-                                      HK_SWITCH_GRID_TO_NEXT, '`' );
+                                      HK_SWITCH_GRID_TO_NEXT, 'N' );
 
 static EDA_HOTKEY HkSwitchGridToPrevious( _HKI( "Switch Grid To Previous" ),
-                                          HK_SWITCH_GRID_TO_PREVIOUS, '`' + GR_KB_CTRL );
+                                          HK_SWITCH_GRID_TO_PREVIOUS, 'N' + GR_KB_SHIFT );
 
 static EDA_HOTKEY HkSwitchUnits( _HKI( "Switch Units" ), HK_SWITCH_UNITS, 'U' + GR_KB_CTRL );
 static EDA_HOTKEY HkTrackDisplayMode( _HKI( "Track Display Mode" ),
@@ -328,37 +328,58 @@ EDA_HOTKEY* module_viewer_Hotkey_List[] = {
     NULL
  };
 
+// Keyword Identifiers (tags) in key code configuration file (section names)
+// (.m_SectionTag member of a EDA_HOTKEY_CONFIG)
+static wxString boardEditorSectionTag( wxT( "[pcbnew]" ) );
+static wxString moduleEditSectionTag( wxT( "[footprinteditor]" ) );
+
+// Titles for hotkey editor and hotkey display
+static wxString commonSectionTitle( _HKI( "Common" ) );
+static wxString boardEditorSectionTitle( _HKI( "Board Editor" ) );
+static wxString moduleEditSectionTitle( _HKI( "Footprint Editor" ) );
+
 // list of sections and corresponding hotkey list for Pcbnew
- // (used to create an hotkey config file, and edit hotkeys )
+// (used to create an hotkey config file, and edit hotkeys )
 struct EDA_HOTKEY_CONFIG g_Pcbnew_Editor_Hokeys_Descr[] = {
-    { &g_CommonSectionTag,      common_Hotkey_List,         &g_CommonSectionTitle      },
-    { &g_BoardEditorSectionTag, board_edit_Hotkey_List,     &g_BoardEditorSectionTitle },
-    { &g_ModuleEditSectionTag,  module_edit_Hotkey_List,    &g_ModuleEditSectionTitle  },
+    { &g_CommonSectionTag,      common_Hotkey_List,         &commonSectionTitle      },
+    { &boardEditorSectionTag,   board_edit_Hotkey_List,     &boardEditorSectionTitle },
+    { &moduleEditSectionTitle,  module_edit_Hotkey_List,    &moduleEditSectionTitle  },
     { NULL,                     NULL,                       NULL                       }
 };
 
 // list of sections and corresponding hotkey list for the board editor
 // (used to list current hotkeys in the board editor)
 struct EDA_HOTKEY_CONFIG g_Board_Editor_Hokeys_Descr[] = {
-    { &g_CommonSectionTag,      common_Hotkey_List,      &g_CommonSectionTitle },
-    { &g_BoardEditorSectionTag, board_edit_Hotkey_List,  &g_BoardEditorSectionTitle },
+    { &g_CommonSectionTag,      common_Hotkey_List,      &commonSectionTitle },
+    { &boardEditorSectionTag,   board_edit_Hotkey_List,  &boardEditorSectionTitle },
     { NULL, NULL, NULL }
 };
 
 // list of sections and corresponding hotkey list for the footprint editor
 // (used to list current hotkeys in the module editor)
 struct EDA_HOTKEY_CONFIG g_Module_Editor_Hokeys_Descr[] = {
-    { &g_CommonSectionTag,     common_Hotkey_List,      &g_CommonSectionTitle },
-    { &g_ModuleEditSectionTag, module_edit_Hotkey_List, &g_ModuleEditSectionTitle },
+    { &g_CommonSectionTag,     common_Hotkey_List,      &commonSectionTitle },
+    { &moduleEditSectionTitle, module_edit_Hotkey_List, &moduleEditSectionTitle },
     { NULL,                    NULL,                    NULL }
 };
 
 // list of sections and corresponding hotkey list for the footprint viewer
 // (used to list current hotkeys in the module viewer)
 struct EDA_HOTKEY_CONFIG g_Module_Viewer_Hokeys_Descr[] = {
-    { &g_CommonSectionTag, common_basic_Hotkey_List, &g_CommonSectionTitle },
+    { &g_CommonSectionTag, common_basic_Hotkey_List, &commonSectionTitle },
     { NULL,                NULL,                     NULL }
 };
+
+
+EDA_HOTKEY* FOOTPRINT_VIEWER_FRAME::GetHotKeyDescription( int aCommand ) const
+{
+    EDA_HOTKEY* HK_Descr = GetDescriptorFromCommand( aCommand, common_Hotkey_List );
+
+    if( HK_Descr == NULL )
+        HK_Descr = GetDescriptorFromCommand( aCommand, module_viewer_Hotkey_List );
+
+    return HK_Descr;
+}
 
 
 bool FOOTPRINT_VIEWER_FRAME::OnHotKey( wxDC* aDC, int aHotKey, const wxPoint& aPosition,

@@ -93,9 +93,16 @@ const wxString PROJECT::GetProjectFullName() const
     return m_project_name.GetFullPath();
 }
 
+
 const wxString PROJECT::GetProjectPath() const
 {
     return m_project_name.GetPathWithSep();
+}
+
+
+const wxString PROJECT::GetProjectName() const
+{
+    return m_project_name.GetName();
 }
 
 
@@ -350,7 +357,6 @@ const wxString PROJECT::AbsolutePath( const wxString& aFileName ) const
     if( !fn.IsAbsolute() )
     {
         wxString pro_dir = wxPathOnly( GetProjectFullName() );
-
         fn.Normalize( wxPATH_NORM_ALL, pro_dir );
     }
 

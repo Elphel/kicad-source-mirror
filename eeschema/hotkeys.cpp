@@ -1,9 +1,9 @@
 /*
  * This program source code file is part of KiCad, a free EDA CAD application.
  *
- * Copyright (C) 2014 Jean-Pierre Charras, jp.charras at wanadoo.fr
+ * Copyright (C) 2015 Jean-Pierre Charras, jp.charras at wanadoo.fr
  * Copyright (C) 2008-2011 Wayne Stambaugh <stambaughw@verizon.net>
- * Copyright (C) 2004-2012 KiCad Developers, see change_log.txt for contributors.
+ * Copyright (C) 2004-2015 KiCad Developers, see change_log.txt for contributors.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -162,9 +162,9 @@ static EDA_HOTKEY HkAddGraphicPolyLine( _HKI( "Add Graphic PolyLine" ), HK_ADD_G
                                         'I', ID_LINE_COMMENT_BUTT );
 static EDA_HOTKEY HkAddGraphicText( _HKI( "Add Graphic Text" ), HK_ADD_GRAPHIC_TEXT, 'T',
                                     ID_TEXT_COMMENT_BUTT );
-static EDA_HOTKEY HkMirrorY( _HKI( "Mirror Y Component" ), HK_MIRROR_Y_COMPONENT, 'Y',
+static EDA_HOTKEY HkMirrorY( _HKI( "Mirror Y" ), HK_MIRROR_Y, 'Y',
                              ID_SCH_MIRROR_Y );
-static EDA_HOTKEY HkMirrorX( _HKI( "Mirror X Component" ), HK_MIRROR_X_COMPONENT, 'X',
+static EDA_HOTKEY HkMirrorX( _HKI( "Mirror X" ), HK_MIRROR_X, 'X',
                              ID_SCH_MIRROR_X );
 static EDA_HOTKEY HkOrientNormalComponent( _HKI( "Orient Normal Component" ),
                                            HK_ORIENT_NORMAL_COMPONENT, 'N', ID_SCH_ORIENT_NORMAL );
@@ -307,41 +307,63 @@ static EDA_HOTKEY* viewlib_Hotkey_List[] =
     NULL
 };
 
+// Keyword Identifiers (tags) in key code configuration file (section names)
+// (.m_SectionTag member of a EDA_HOTKEY_CONFIG)
+static wxString schematicSectionTag( wxT( "[eeschema]" ) );
+static wxString libEditSectionTag( wxT( "[libedit]" ) );
+
+// Titles for hotkey editor and hotkey display
+static wxString commonSectionTitle( _HKI( "Common" ) );
+static wxString schematicSectionTitle( _HKI( "Schematic Editor" ) );
+static wxString libEditSectionTitle( _HKI( "Library Editor" ) );
+
 // list of sections and corresponding hotkey list for Eeschema (used to create
 // an hotkey config file)
 struct EDA_HOTKEY_CONFIG g_Eeschema_Hokeys_Descr[] =
 {
-    { &g_CommonSectionTag,    common_Hotkey_List,    &g_CommonSectionTitle    },
-    { &g_SchematicSectionTag, schematic_Hotkey_List, &g_SchematicSectionTitle },
-    { &g_LibEditSectionTag,   libEdit_Hotkey_List,   &g_LibEditSectionTitle   },
-    { NULL,                   NULL,                  NULL                     }
+    { &g_CommonSectionTag,    common_Hotkey_List,    &commonSectionTitle    },
+    { &schematicSectionTag,   schematic_Hotkey_List, &schematicSectionTitle },
+    { &libEditSectionTag,     libEdit_Hotkey_List,   &libEditSectionTitle   },
+    { NULL,                   NULL,                  NULL                   }
 };
 
 // list of sections and corresponding hotkey list for the schematic editor
 // (used to list current hotkeys)
 struct EDA_HOTKEY_CONFIG g_Schematic_Hokeys_Descr[] =
 {
-    { &g_CommonSectionTag,    common_Hotkey_List,    &g_CommonSectionTitle },
-    { &g_SchematicSectionTag, schematic_Hotkey_List, &g_SchematicSectionTitle },
-    { NULL,                   NULL,                    NULL }
+    { &g_CommonSectionTag,    common_Hotkey_List,    &commonSectionTitle    },
+    { &schematicSectionTitle, schematic_Hotkey_List, &schematicSectionTitle },
+    { NULL,                   NULL,                  NULL }
 };
 
 // list of sections and corresponding hotkey list for the component editor
 // (used to list current hotkeys)
 struct EDA_HOTKEY_CONFIG g_Libedit_Hokeys_Descr[] =
 {
-    { &g_CommonSectionTag,  common_Hotkey_List,  &g_CommonSectionTitle },
-    { &g_LibEditSectionTag, libEdit_Hotkey_List, &g_LibEditSectionTitle },
-    { NULL,                 NULL,                NULL }
+    { &g_CommonSectionTag,  common_Hotkey_List,   &commonSectionTitle  },
+    { &libEditSectionTag,   libEdit_Hotkey_List,  &libEditSectionTitle },
+    { NULL,                 NULL,                 NULL }
 };
 
 // list of sections and corresponding hotkey list for the component browser
 // (used to list current hotkeys)
 struct EDA_HOTKEY_CONFIG g_Viewlib_Hokeys_Descr[] =
 {
-    { &g_CommonSectionTag, common_basic_Hotkey_List, &g_CommonSectionTitle },
+    { &g_CommonSectionTag, common_basic_Hotkey_List, &commonSectionTitle },
     { NULL,                NULL,                 NULL }
 };
+
+
+EDA_HOTKEY* SCH_EDIT_FRAME::GetHotKeyDescription( int aCommand ) const
+{
+    EDA_HOTKEY* HK_Descr = GetDescriptorFromCommand( aCommand, common_Hotkey_List );
+
+    if( HK_Descr == NULL )
+        HK_Descr = GetDescriptorFromCommand( aCommand, schematic_Hotkey_List );
+
+    return HK_Descr;
+}
+
 
 /*
  * Hot keys. Some commands are relative to the item under the mouse cursor
@@ -418,7 +440,7 @@ bool SCH_EDIT_FRAME::OnHotKey( wxDC* aDC, int aHotKey, const wxPoint& aPosition,
     case HK_ZOOM_CENTER:
     case HK_ZOOM_AUTO:
     case HK_MOVEBLOCK_TO_DRAGBLOCK:          // Switch to drag mode, when block moving
-    case HK_SAVE_BLOCK:                      // Copy block to clip board.
+    case HK_SAVE_BLOCK:                      // Copy block to paste buffer.
         cmd.SetId( hotKey->m_IdMenuEvent );
         GetEventHandler()->ProcessEvent( cmd );
         break;
@@ -546,8 +568,8 @@ bool SCH_EDIT_FRAME::OnHotKey( wxDC* aDC, int aHotKey, const wxPoint& aPosition,
     case HK_EDIT_COMPONENT_VALUE:           // Edit component value field.
     case HK_EDIT_COMPONENT_REFERENCE:       // Edit component value reference.
     case HK_EDIT_COMPONENT_FOOTPRINT:       // Edit component footprint field.
-    case HK_MIRROR_Y_COMPONENT:             // Mirror Y
-    case HK_MIRROR_X_COMPONENT:             // Mirror X
+    case HK_MIRROR_Y:                       // Mirror Y
+    case HK_MIRROR_X:                       // Mirror X
     case HK_ORIENT_NORMAL_COMPONENT:        // Orient 0, no mirror (Component)
     case HK_ROTATE:                         // Rotate schematic item.
     case HK_EDIT_COMPONENT_WITH_LIBEDIT:    // Call Libedit and load the current component
@@ -568,6 +590,17 @@ bool SCH_EDIT_FRAME::OnHotKey( wxDC* aDC, int aHotKey, const wxPoint& aPosition,
 
     // Hot key handled.
     return true;
+}
+
+
+EDA_HOTKEY* LIB_EDIT_FRAME::GetHotKeyDescription( int aCommand ) const
+{
+    EDA_HOTKEY* HK_Descr = GetDescriptorFromCommand( aCommand, common_Hotkey_List );
+
+    if( HK_Descr == NULL )
+        HK_Descr = GetDescriptorFromCommand( aCommand, libEdit_Hotkey_List );
+
+    return HK_Descr;
 }
 
 
@@ -738,6 +771,18 @@ bool LIB_EDIT_FRAME::OnHotKey( wxDC* aDC, int aHotKey, const wxPoint& aPosition,
     // Hot key handled.
     return true;
 }
+
+
+EDA_HOTKEY* LIB_VIEW_FRAME::GetHotKeyDescription( int aCommand ) const
+{
+    EDA_HOTKEY* HK_Descr = GetDescriptorFromCommand( aCommand, common_Hotkey_List );
+
+    if( HK_Descr == NULL )
+        HK_Descr = GetDescriptorFromCommand( aCommand, viewlib_Hotkey_List );
+
+    return HK_Descr;
+}
+
 
 bool LIB_VIEW_FRAME::OnHotKey( wxDC* aDC, int aHotKey, const wxPoint& aPosition,
                                      EDA_ITEM* aItem )

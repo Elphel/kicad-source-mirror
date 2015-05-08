@@ -63,7 +63,7 @@ typedef boost::weak_ptr<LIB_PART>       PART_REF;       ///< weak pointer to LIB
 
 
 /* values for member .m_options */
-enum  LibrEntryOptions
+enum  LIBRENTRYOPTIONS
 {
     ENTRY_NORMAL,   // Libentry is a standard part (real or alias)
     ENTRY_POWER     // Libentry is a power symbol
@@ -207,7 +207,7 @@ class LIB_PART : public EDA_ITEM
     bool                m_showPinNames;     ///< Determines if part pin names are visible.
     bool                m_showPinNumbers;   ///< Determines if part pin numbers are visible.
     long                m_dateModified;     ///< Date the part was last modified.
-    LibrEntryOptions    m_options;          ///< Special part features such as POWER or NORMAL.)
+    LIBRENTRYOPTIONS    m_options;          ///< Special part features such as POWER or NORMAL.)
     int                 m_unitCount;        ///< Number of units (parts) per package.
     LIB_ITEMS           drawings;           ///< How to draw this part.
     wxArrayString       m_FootprintList;    /**< List of suitable footprint names for the
@@ -521,6 +521,22 @@ public:
      * @return The pin object if found.  Otherwise NULL.
      */
     LIB_PIN* GetPin( const wxString& aNumber, int aUnit = 0, int aConvert = 0 );
+
+    /**
+     * Function PinsConflictWith
+     * returns true if this part's pins do not match another part's pins. This
+     * is used to detect whether the project cache is out of sync with the
+     * system libs.
+     *
+     * @param aOtherPart - The other library part to test
+     * @param aTestNums - Whether two pins at the same point must have the same number.
+     * @param aTestNames - Whether two pins at the same point must have the same name.
+     * @param aTestType - Whether two pins at the same point must have the same electrical type.
+     * @param aTestOrientation - Whether two pins at the same point must have the same orientation.
+     * @param aTestLength - Whether two pins at the same point must have the same length.
+     */
+    bool PinsConflictWith( LIB_PART& aOtherPart, bool aTestNums, bool aTestNames,
+            bool aTestType, bool aTestOrientation, bool aTestLength );
 
     /**
      * Move the part \a aOffset.

@@ -38,6 +38,7 @@
 #include <richio.h>
 #include <config_params.h>
 #include <wildcards_and_files_ext.h>
+#include <lib_cache_rescue.h>
 //#include <richio.h>
 
 #include <general.h>
@@ -98,6 +99,33 @@ void PART_LIB::GetEntryNames( wxArrayString& aNames, bool aSort, bool aMakeUpper
 {
     for( LIB_ALIAS_MAP::iterator it = m_amap.begin();  it!=m_amap.end();  it++ )
     {
+        if( aMakeUpperCase )
+        {
+            wxString tmp = (*it).first;
+            tmp.MakeUpper();
+            aNames.Add( tmp );
+        }
+        else
+        {
+            aNames.Add( (*it).first );
+        }
+    }
+
+    if( aSort )
+        aNames.Sort();
+}
+
+
+void PART_LIB::GetEntryTypePowerNames( wxArrayString& aNames, bool aSort, bool aMakeUpperCase )
+{
+    for( LIB_ALIAS_MAP::iterator it = m_amap.begin();  it!=m_amap.end();  it++ )
+    {
+        LIB_ALIAS* alias = it->second;
+        LIB_PART* root = alias->GetPart();
+
+        if( !root || !root->IsPower() )
+            continue;
+
         if( aMakeUpperCase )
         {
             wxString tmp = (*it).first;
@@ -232,6 +260,22 @@ LIB_PART* PART_LIB::FindPart( const wxString& aName )
     }
 
     return NULL;
+}
+
+
+bool PART_LIB::HasPowerParts()
+{
+    // return true if at least one power part is found in lib
+    for( LIB_ALIAS_MAP::iterator it = m_amap.begin();  it!=m_amap.end();  it++ )
+    {
+        LIB_ALIAS* alias = it->second;
+        LIB_PART* root = alias->GetPart();
+
+        if( root && root->IsPower() )
+            return true;
+    }
+
+    return false;
 }
 
 
@@ -881,7 +925,7 @@ wxArrayString PART_LIBS::GetLibraryNames( bool aSorted )
 }
 
 
-LIB_PART* PART_LIBS::FindLibPart( const wxString& aName, const wxString& aLibraryName )
+LIB_PART* PART_LIBS::FindLibPart( const wxString& aPartName, const wxString& aLibraryName )
 {
     LIB_PART* part = NULL;
 
@@ -890,7 +934,7 @@ LIB_PART* PART_LIBS::FindLibPart( const wxString& aName, const wxString& aLibrar
         if( !aLibraryName.IsEmpty() && lib.GetName() != aLibraryName )
             continue;
 
-        part = lib.FindPart( aName );
+        part = lib.FindPart( aPartName );
 
         if( part )
             break;
@@ -900,7 +944,7 @@ LIB_PART* PART_LIBS::FindLibPart( const wxString& aName, const wxString& aLibrar
 }
 
 
-LIB_ALIAS* PART_LIBS::FindLibraryEntry( const wxString& aName, const wxString& aLibraryName )
+LIB_ALIAS* PART_LIBS::FindLibraryEntry( const wxString& aEntryName, const wxString& aLibraryName )
 {
     LIB_ALIAS* entry = NULL;
 
@@ -909,13 +953,24 @@ LIB_ALIAS* PART_LIBS::FindLibraryEntry( const wxString& aName, const wxString& a
         if( !!aLibraryName && lib.GetName() != aLibraryName )
             continue;
 
-        entry = lib.FindEntry( aName );
+        entry = lib.FindEntry( aEntryName );
 
         if( entry )
             break;
     }
 
     return entry;
+}
+
+void PART_LIBS::FindLibraryEntries( const wxString& aEntryName, std::vector<LIB_ALIAS*>& aEntries )
+{
+    BOOST_FOREACH( PART_LIB& lib, *this )
+    {
+        LIB_ALIAS* entry = lib.FindEntry( aEntryName );
+
+        if( entry )
+            aEntries.push_back( entry );
+    }
 }
 
 /* searches all libraries in the list for an entry, using a case insensitive comparison.
@@ -1119,12 +1174,15 @@ void PART_LIBS::LoadAllLibraries( PROJECT* aProject ) throw( IO_ERROR, boost::ba
 
     // add the special cache library.
     wxString cache_name = CacheName( aProject->GetProjectFullName() );
+    PART_LIB* cache_lib;
+
     if( !!cache_name )
     {
         try
         {
-            if( PART_LIB* lib = AddLibrary( cache_name ) )
-                lib->SetCache();
+            cache_lib = AddLibrary( cache_name );
+            if( cache_lib )
+                cache_lib->SetCache();
         }
         catch( const IO_ERROR& ioe )
         {
