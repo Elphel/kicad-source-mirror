@@ -65,12 +65,11 @@
 #include <worksheet_viewitem.h>
 #include <ratsnest_data.h>
 #include <ratsnest_viewitem.h>
-#include <tools/edit_teardrops.h>
 
 #include <tool/tool_manager.h>
 #include <tool/tool_dispatcher.h>
 #include <tools/common_actions.h>
-#include <tools/selection_tool.h>
+#include "tools/edit_teardrops.h"
 
 #include <scripting/python_console_frame.h>
 
@@ -737,6 +736,7 @@ void  PCB_EDIT_FRAME::ShowTeardropsEditor( wxCommandEvent& event )
         m_toolManager->GetTool<TEARDROPS_EDITOR>()->EditTeardrops(settings);
         OnModify();
     }
+    delete dlg_teardrops;
 }
 
 void PCB_EDIT_FRAME::LoadSettings( wxConfigBase* aCfg )
